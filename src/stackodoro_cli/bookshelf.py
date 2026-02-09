@@ -34,8 +34,8 @@ class Bookshelf:
         if "'" in (left_char, right_char) or "`" in (left_char, right_char):
             return '^'
         return ' '
-
-    def __str__(self) -> str:
+    
+    def ascii_list(self) -> list[str]:
         result: list[str] = self.top.copy()
         books_to_place: list[Book] = self._completed_books.copy()
 
@@ -87,5 +87,8 @@ class Bookshelf:
                 result.extend(self.mid)
         
         result.extend(self.bottom)
-        return "\n".join(result)
+        return result
+
+    def __str__(self) -> str:
+        return "\n".join(self.ascii_list())
         
