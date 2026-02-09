@@ -9,7 +9,7 @@ description = "Simple pomodoro cli app that fill as bookshelf with a random book
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "click",     # Great library for building CLIs
+    "click",
 ]
 
 [project.scripts]

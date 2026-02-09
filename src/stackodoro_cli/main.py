@@ -8,7 +8,7 @@ import time
 @click.command()
 def run():
     my_shelf = Bookshelf()
-    for _ in range(25):
+    for _ in range(5):
         my_shelf.add_book()
 
     try:
@@ -16,7 +16,7 @@ def run():
         while True:
             sys.stdout.write("\033[H\033[J")            
             display_view(my_shelf)
-            time.sleep(0.4)
+            time.sleep(0.6)
             
     except KeyboardInterrupt:
         sys.stdout.write("\033[?25h")
