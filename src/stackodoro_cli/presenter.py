@@ -1,11 +1,16 @@
+from .state_manager import StateManager
 from .bookshelf import Bookshelf
-from .utils import merge_layers
+from .utils import merge_layers, center_canvas_on_screen, format_time
+
 from importlib import resources
 
-from random import choice
+def display_view(state_manager: StateManager):
+    
+    if state_manager.is_paused:
+        display_pause()
+        return
 
-def display_view(usr_bookshelf: Bookshelf):
-    bs_lines = usr_bookshelf.ascii_list()
+    bs_lines = state_manager.bookshelf.ascii_list()
 
     with resources.files('stackodoro_cli').joinpath('res/table.txt').open('r') as f:
         table_lines = [line.rstrip('\n') for line in f]
@@ -28,7 +33,7 @@ def display_view(usr_bookshelf: Bookshelf):
             " " * 22 + "    ) (   "
             ]
     ]
-    steam_lines = choice(steam_variations)
+    steam_lines = steam_variations[state_manager.steam_state]
 
     canvas = bs_lines
     
@@ -39,4 +44,27 @@ def display_view(usr_bookshelf: Bookshelf):
     canvas = merge_layers(canvas, table_lines, table_y)
     canvas = merge_layers(canvas, steam_lines, steam_y)
 
-    print("\n".join(canvas))
+    timer_str = " " * 39 + f"{format_time(state_manager.pomodoro.read()) if state_manager.pomodoro else '00:00'}"
+    
+    timer_y = len(bs_lines) - 2
+    
+    canvas = merge_layers(canvas, [timer_str], timer_y)
+
+    centered_canvas = center_canvas_on_screen(canvas)
+
+    print("\n".join(centered_canvas))
+
+def display_pause():
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+    pause_msg = [
+            " ============ ",
+            "    PAUSED    ",
+            " ============ ",
+        ]
+    canvas = center_canvas_on_screen(pause_msg)
+    result = []
+    for line in canvas:
+        result.append(BOLD + line + RESET)
+    print("\n".join(result))
+    
