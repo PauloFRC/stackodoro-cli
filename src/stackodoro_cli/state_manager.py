@@ -4,6 +4,8 @@ from .pomodoro import Pomodoro
 class StateManager():
     def __init__(self):
         self.bookshelf = Bookshelf() # TODO: load from persistent storage
+        for i in range(20):
+            self.bookshelf.add_book()
         self.is_paused = False
         self.pomodoro:Pomodoro | None = None
         self._timer_blink_visible = True

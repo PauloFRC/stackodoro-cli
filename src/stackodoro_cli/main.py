@@ -6,7 +6,7 @@ import urwid
 import sys
 from io import StringIO
 
-class PomodoroApp:
+class App:
     def __init__(self):
         self.state_manager = StateManager()
         
@@ -172,19 +172,9 @@ class PomodoroApp:
     def update_display(self, loop, user_data=None):
         self.state_manager.tick()
         
-        old_stdout = sys.stdout
-        sys.stdout = StringIO()
+        markup_content = display_view(self.state_manager)
 
-        try:
-            display_view(self.state_manager)
-            output = sys.stdout.getvalue()
-        finally:
-            sys.stdout = old_stdout
-        
-        if self.state_manager.is_paused:
-            self.display_text.set_text(('bold_text', output))
-        else:
-            self.display_text.set_text(output)
+        self.display_text.set_text(markup_content)
         
         loop.set_alarm_in(0.1, self.update_display)
     
@@ -193,7 +183,7 @@ class PomodoroApp:
 
 
 def run():
-    app = PomodoroApp()
+    app = App()
     app.run()
 
 

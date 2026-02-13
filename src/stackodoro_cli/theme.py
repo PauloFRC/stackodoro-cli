@@ -1,10 +1,19 @@
 import urwid
 
 palette = [
-    # unfocused button
+     # unfocused button
     ('minimal_button', 'light gray', ''),
     # focused button
      ('minimal_button_focus', 'black,bold', 'light gray'),
+
+    ('table_color', 'brown', ''),
+    ('steam_color', 'white,bold', ''),
+    ('timer_color', 'white,bold', ''),
+
+    ('shelf_color', 'light gray', ''),
+    ('book_color_1', 'dark blue', ''),
+    ('book_color_2', 'dark green', ''),
+    ('book_color_3', 'dark red', ''),
 ]
 
 class SelectableText(urwid.Text):

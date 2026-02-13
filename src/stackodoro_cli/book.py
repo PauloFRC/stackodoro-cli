@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Book:
     ascii: list[str]
+    color: str = 'default'
 
     @property
     def width(self) -> int:
@@ -25,7 +26,7 @@ def load_book_ascii(filename: str) -> list[str]:
         return [line.rstrip('\n') for line in f]
 
 book_options = [
-    Book(load_book_ascii("book1")),
-    Book(load_book_ascii("book2")),
-    Book(load_book_ascii("book3")),
+    Book(load_book_ascii("book1"), color='book_color_1'),
+    Book(load_book_ascii("book2"), color='book_color_2'),
+    Book(load_book_ascii("book3"), color='book_color_3'),
 ]

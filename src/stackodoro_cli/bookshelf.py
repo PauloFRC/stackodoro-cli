@@ -35,13 +35,25 @@ class Bookshelf:
             return '^'
         return ' '
     
-    def ascii_list(self) -> list[str]:
-        result: list[str] = self.top.copy()
+    def render(self) -> tuple[list[str], list[list[str]]]:
+        result_text: list[str] = []
+        result_attrs: list[list[str]] = []
+        
+        def add_shelf_part(part_lines):
+            result_text.extend(part_lines)
+            for line in part_lines:
+                result_attrs.append(['shelf_color'] * len(line))
+
+        add_shelf_part(self.top)
+        
         books_to_place: list[Book] = self._completed_books.copy()
 
         for shelf_i in range(self.n_shelfs):
-            current_shelf_rows = ["||"] * SHELF_HEIGHT
+            current_rows = ["||"] * SHELF_HEIGHT
+            current_attrs = [['shelf_color'] * 2 for _ in range(SHELF_HEIGHT)]
+            
             used_width = 0
+            previous_book: Book | None = None  # track previous book for height comparison
 
             while books_to_place:
                 next_book = books_to_place[0]
@@ -50,45 +62,71 @@ class Bookshelf:
 
                 if used_width + effective_width <= self.shelf_width:
                     book = books_to_place.pop(0)
+                    book_color = book.color
 
                     if is_first_book:
                         for i in range(SHELF_HEIGHT):
-                            current_shelf_rows[i] += book.ascii[i]
+                            line_len = len(book.ascii[i])
+                            current_rows[i] += book.ascii[i]
+                            current_attrs[i].extend([book_color] * line_len)
                     else:
+                        prev_h = sum(1 for line in previous_book.ascii if line.strip()) if previous_book else 0
+                        curr_h = sum(1 for line in book.ascii if line.strip())
+                        
+                        collision_color = previous_book.color if previous_book and prev_h >= curr_h else book_color
+
                         for i in range(SHELF_HEIGHT):
-                            left_char = current_shelf_rows[i][-1]
+                            left_char = current_rows[i][-1]
                             right_char = book.ascii[i][0]
-                            
                             merged_char = self._resolve_border(left_char, right_char)
                             
-                            current_shelf_rows[i] = (
-                                current_shelf_rows[i][:-1] + 
+                            current_rows[i] = (
+                                current_rows[i][:-1] + 
                                 merged_char + 
                                 book.ascii[i][1:]
                             )
+                            
+                            left_is_content = left_char != ' '
+                            right_is_content = right_char != ' '
+                            
+                            if left_is_content and right_is_content:
+                                final_border_color = collision_color
+                            elif left_is_content:
+                                final_border_color = previous_book.color if previous_book else 'shelf_color'
+                            elif right_is_content:
+                                final_border_color = book_color
+                            else:
+                                final_border_color = collision_color
+
+                            current_attrs[i].pop()
+                            current_attrs[i].append(final_border_color)
+                            current_attrs[i].extend([book_color] * (len(book.ascii[i]) - 1))
 
                     used_width += effective_width
+                    previous_book = book
                 else:
                     break
             
-            # add rest of bookshelf padding
             remaining_space = self.shelf_width - used_width
             if remaining_space > 0:
                 for i in range(SHELF_HEIGHT):
-                    current_shelf_rows[i] += " " * remaining_space
+                    current_rows[i] += " " * remaining_space
+                    current_attrs[i].extend(['shelf_color'] * remaining_space)
 
             for i in range(SHELF_HEIGHT):
-                current_shelf_rows[i] += "||"
+                current_rows[i] += "||"
+                current_attrs[i].extend(['shelf_color'] * 2)
             
-            result.extend(current_shelf_rows)
+            result_text.extend(current_rows)
+            result_attrs.extend(current_attrs)
 
-            # add shelf separator if not last shelf
             if shelf_i < self.n_shelfs - 1:
-                result.extend(self.mid)
+                add_shelf_part(self.mid)
         
-        result.extend(self.bottom)
-        return result
+        add_shelf_part(self.bottom)
+        return result_text, result_attrs
 
     def __str__(self) -> str:
-        return "\n".join(self.ascii_list())
-        
+        text, _ = self.render()
+        return "\n".join(text)
+    
