@@ -21,7 +21,7 @@ def merge_row(bg_row: str, fg_row: str) -> str:
         else:
             result.append(bg_row[i])
 
-    return "".join(result).rstrip()
+    return "".join(result)
 
 def merge_layers(background: list[str], foreground: list[str], start_y: int) -> list[str]:
     canvas = background[:]

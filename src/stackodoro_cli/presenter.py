@@ -50,21 +50,16 @@ def display_view(state_manager: StateManager):
     
     canvas = merge_layers(canvas, [timer_str], timer_y)
 
-    centered_canvas = center_canvas_on_screen(canvas)
+    max_width = max(len(line) for line in canvas) if canvas else 0
+    centered_canvas = [line.ljust(max_width) for line in canvas]
 
     print("\n".join(centered_canvas))
 
 def display_pause():
-    BOLD = "\033[1m"
-    RESET = "\033[0m"
     pause_msg = [
-            " ============ ",
-            "    PAUSED    ",
-            " ============ ",
+            "============",
+            "   PAUSED   ",
+            "============",
         ]
-    canvas = center_canvas_on_screen(pause_msg)
-    result = []
-    for line in canvas:
-        result.append(BOLD + line + RESET)
-    print("\n".join(result))
+    print("\n".join(pause_msg))
     
