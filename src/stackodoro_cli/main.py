@@ -3,8 +3,6 @@ from .presenter import display_view
 from .theme import palette, MinimalButton
 
 import urwid
-import sys
-from io import StringIO
 
 class App:
     def __init__(self):
