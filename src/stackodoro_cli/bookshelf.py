@@ -1,6 +1,9 @@
 from .book import Book, book_options
 
 from random import choice
+import json
+import os
+from pathlib import Path
 
 SHELF_HEIGHT = 8
 
@@ -21,6 +24,41 @@ class Bookshelf:
             "||" + ("_" * self.shelf_width) + "||"
         ]
         self._completed_books: list[Book] = []
+        self._init_storage_path()
+    
+    def _init_storage_path(self):
+        data_home = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
+        self.storage_dir = Path(data_home) / 'stackodoro-cli'
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self.storage_file = self.storage_dir / 'bookshelf.json'
+    
+    def load(self):
+        if self.storage_file.exists():
+            try:
+                with open(self.storage_file, 'r') as f:
+                    data = json.load(f)
+                    self._completed_books = []
+                    for book_data in data.get('books', []):
+                        book = Book(
+                            ascii=book_data['ascii'],
+                            color=book_data['color']
+                        )
+                        self._completed_books.append(book)
+            except (json.JSONDecodeError, KeyError):
+                self._completed_books = []
+    
+    def save(self):
+        data = {
+            'books': [
+                {
+                    'ascii': book.ascii,
+                    'color': book.color
+                }
+                for book in self._completed_books
+            ]
+        }
+        with open(self.storage_file, 'w') as f:
+            json.dump(data, f, indent=2)
     
     def add_book(self):
         self._completed_books.append(choice(book_options)) 

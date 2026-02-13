@@ -165,6 +165,7 @@ class App:
         pass
     
     def quit_app(self, button=None):
+        self.state_manager.save_state()
         raise urwid.ExitMainLoop()
     
     def handle_input(self, key):
@@ -176,7 +177,7 @@ class App:
             return
         
         if key in ('q', 'Q'):
-            raise urwid.ExitMainLoop()
+            self.quit_app()
         elif key == ' ':
             if self.state_manager.pomodoro:
                 self.toggle_pause()
@@ -197,7 +198,10 @@ class App:
         loop.set_alarm_in(0.1, self.update_display)
     
     def run(self):
-        self.loop.run()
+        try:
+            self.loop.run()
+        finally:
+            self.state_manager.save_state()
 
 def run():
     app = App()

@@ -3,7 +3,8 @@ from .pomodoro import Pomodoro, SessionType
 
 class StateManager():
     def __init__(self):
-        self.bookshelf = Bookshelf() # TODO: load from persistent storage
+        self.bookshelf = Bookshelf()
+        self.bookshelf.load()  # Load saved bookshelf state
         self.is_paused = False
         self.pomodoro:Pomodoro | None = None
         self._timer_blink_visible = True
@@ -47,7 +48,11 @@ class StateManager():
             # add book when entering break sessions since work session was completed
             if self.pomodoro.state != SessionType.WORK:
                 self.bookshelf.add_book()
+                self.bookshelf.save()
             self.pomodoro.transition()
+    
+    def save_state(self):
+        self.bookshelf.save()
          
     def _toggle_timer_blink_visibility(self):
         self._timer_blink_visible = not self._timer_blink_visible
