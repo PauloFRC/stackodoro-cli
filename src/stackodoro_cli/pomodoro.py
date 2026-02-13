@@ -2,7 +2,6 @@ from enum import Enum
 import threading
 import time
 
-
 class SessionType(Enum):
     WORK = "work"
     BREAK = "break"
@@ -22,6 +21,7 @@ class Pomodoro:
         self._lock = threading.Lock()
         self._running = False
         self._paused = False
+        self._transition_pending = False
         self._thread = None
         self._last_decrement = None
     
@@ -35,7 +35,7 @@ class Pomodoro:
             with self._lock:
                 elapsed_since_decrement = current_time - self._last_decrement
                 
-                if not self._paused and self.time_remaining > 0 and elapsed_since_decrement >= 1.0:
+                if not self._paused and not self._transition_pending and self.time_remaining > 0 and elapsed_since_decrement >= 1.0:
                     self.time_remaining -= 1
                     self._last_decrement = current_time
 
@@ -54,9 +54,11 @@ class Pomodoro:
             else:
                 self.state = SessionType.BREAK
                 self.time_remaining = self.break_period * 60
-        else:  # BREAK or BIG_BREAK
+        else: 
             self.state = SessionType.WORK
             self.time_remaining = self.work_period * 60
+        
+        self._transition_pending = True
     
     def start(self):
         with self._lock:
@@ -81,3 +83,7 @@ class Pomodoro:
     def read(self) -> int:
         with self._lock:
             return self.time_remaining
+        
+    def transition(self):
+        with self._lock:
+            self._transition_pending = False

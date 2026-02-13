@@ -32,11 +32,11 @@ class App:
             self.btn_quit,
         ])
                 
-        # right menu - music controls TODO
+        # right menu - other controls TODO
         self.btn_music = MinimalButton("Play Music", on_press=self.toggle_music)
         
         self.right_menu = urwid.Pile([
-            urwid.Text("Music", align='center'),
+            urwid.Text("Controls", align='center'),
             urwid.Divider(),
             self.btn_music,
         ])
@@ -143,7 +143,13 @@ class App:
         self.loop.widget = self.main_widget
     
     def toggle_pause(self):
-        self.state_manager.is_paused = not self.state_manager.is_paused
+        if self.state_manager.pomodoro:
+            if self.state_manager.is_transition_pending():
+                self.state_manager.transition()
+            elif self.state_manager.is_paused:
+                self.state_manager.play_pomodoro()
+            else:
+                self.state_manager.pause_pomodoro()
     
     def toggle_music(self, button=None):
         pass
@@ -181,11 +187,9 @@ class App:
     def run(self):
         self.loop.run()
 
-
 def run():
     app = App()
     app.run()
-
 
 if __name__ == "__main__":
     run()
