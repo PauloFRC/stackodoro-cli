@@ -14,7 +14,7 @@ class App:
         # left menu - pomodoro controls
         self.btn_25_5 = MinimalButton("25+5+20", on_press=lambda btn: self.start_preset(25, 5, 20))
         self.btn_35_10 = MinimalButton("35+10+20", on_press=lambda btn: self.start_preset(35, 10, 20))
-        self.btn_40_20 = MinimalButton("40+20+40", on_press=lambda btn: self.start_preset(40, 20, 40))
+        self.btn_40_20 = MinimalButton("40+20+30", on_press=lambda btn: self.start_preset(40, 20, 30))
         self.btn_custom = MinimalButton("Custom Timer", on_press=self.show_custom_dialog)
         self.btn_quit = MinimalButton("Quit", on_press=self.quit_app)
         
@@ -63,8 +63,20 @@ class App:
         self.timer_running = False
         self.custom_dialog_open = False
         self.menus_visible = True
-
+        self._hide_alarm = None
+    
         self.loop.set_alarm_in(0.1, self.update_display)
+    
+    def _auto_hide_menus(self, loop, user_data):
+        self.hide_menus()
+        self._hide_alarm = None
+    
+    # hide menu after 5 seconds of inactivity
+    def _schedule_autohide(self):
+        if self._hide_alarm:
+            self.loop.remove_alarm(self._hide_alarm)
+        
+        self._hide_alarm = self.loop.set_alarm_in(5, self._auto_hide_menus)
     
     def hide_menus(self):
         self.menus_visible = False
@@ -171,6 +183,8 @@ class App:
         else:
             if not self.menus_visible:
                 self.show_menus()
+                if self.state_manager.pomodoro:
+                    self._schedule_autohide()
             return key
     
     def update_display(self, loop, user_data=None):

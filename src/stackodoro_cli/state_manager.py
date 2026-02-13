@@ -38,6 +38,9 @@ class StateManager():
     
     def is_transition_pending(self):
         return self.pomodoro._transition_pending if self.pomodoro else False
+
+    def is_pomodoro_running(self):
+        return self.pomodoro and self.pomodoro._running and not self.is_paused
     
     def transition(self):
         if self.pomodoro:
