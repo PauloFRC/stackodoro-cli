@@ -14,7 +14,6 @@ class App:
 
         # services
         self.bookshelf = Bookshelf()
-        self.state.bookshelf_count = len(self.bookshelf)
         self.pomodoro = None
         self.mixer = AudioMixer()
         
@@ -62,6 +61,7 @@ class App:
         self.hide_menus()
         self._hide_alarm = None
     
+    # autohide menu after 5 seconds
     def _schedule_autohide(self):
         if self._hide_alarm:
             self.loop.remove_alarm(self._hide_alarm)
@@ -77,6 +77,7 @@ class App:
         self.columns.contents[0] = (self.left_menu, self.columns.options('weight', 1))
         self.columns.contents[2] = (self.right_menu, self.columns.options('weight', 1))
     
+    # start session
     def start_preset(self, work_minutes, break_minutes, big_break_minutes):
         if self.pomodoro:
             self.pomodoro.stop()
@@ -90,6 +91,7 @@ class App:
         self.pomodoro.start()
         self.hide_menus()
     
+    # custom pomodoro dialog
     def show_custom_dialog(self):
         if self.active_dialog:
             return
@@ -138,7 +140,6 @@ class App:
         if pomodoro_state.session_type != SessionType.WORK:
             self.bookshelf.add_book()
             self.bookshelf.save()
-            self.state.bookshelf_count += 1
             
         self.pomodoro.confirm_transition()
     
@@ -175,6 +176,8 @@ class App:
 
     def update_animations(self):
         pomodoro_state = self.state.pomodoro_status
+
+        # update steam
         if not pomodoro_state or (not pomodoro_state.is_paused and not pomodoro_state.is_transition_pending):
             self.steam_tick_counter += 1
             if self.steam_tick_counter >= self.steam_update_threshold:
@@ -182,12 +185,12 @@ class App:
                 self.steam_tick_counter = 0
     
     def update_display(self, loop, user_data=None):
-        self.state.bookshelf_count = len(self.bookshelf)
         self.state.bookshelf_render = self.bookshelf.render()
 
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
-
+            
+            # play session complete sound effect
             if self.state.pomodoro_status.is_transition_pending:
                 if not self._transition_sound_played:
                     self.mixer.play_session_complete()

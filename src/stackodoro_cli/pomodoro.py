@@ -22,7 +22,7 @@ class Pomodoro:
         self.big_break_period = big_break_period
         self.n_cycles = n_cycles
 
-        self._state: SessionType = SessionType.WORK
+        self._session_type: SessionType = SessionType.WORK
         self._time_remaining: int = self.work_period * 60
         self._cycles_completed: int = 0
         
@@ -34,7 +34,7 @@ class Pomodoro:
     def get_status(self):
         self._update_clock()
         return PomodoroStatus(
-            self._state,
+            self._session_type,
             int(self._time_remaining),
             self._paused,
             self._running,
@@ -61,17 +61,17 @@ class Pomodoro:
         self._last_decrement = time.time()
     
     def _prepare_transition(self):
-        if self._state == SessionType.WORK:
+        if self._session_type == SessionType.WORK:
             self._cycles_completed += 1
             # after n_cycles, use big break otherwise normal break
             if self._cycles_completed % self.n_cycles == 0:
-                self._state = SessionType.BIG_BREAK
+                self._session_type = SessionType.BIG_BREAK
                 self._time_remaining = self.big_break_period * 60
             else:
-                self._state = SessionType.BREAK
+                self._session_type = SessionType.BREAK
                 self._time_remaining = self.break_period * 60
         else: 
-            self._state = SessionType.WORK
+            self._session_type = SessionType.WORK
             self._time_remaining = self.work_period * 60
         
         self._transition_pending = True

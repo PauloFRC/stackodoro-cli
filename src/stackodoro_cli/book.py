@@ -9,16 +9,14 @@ class Book:
     ascii: list[str]
     color: str = 'default'
     height: int = field(init=False)
-
-    @property
-    def width(self) -> int:
-        return max(len(line.rstrip("\n")) for line in self.ascii)
+    width: int = field(init=False)
     
     def __post_init__(self):
         if len(self.ascii) > MAX_BOOK_HEIGHT:
             raise ValueError(f"Book has a height of {len(self.ascii)} lines, maximum allowed is {MAX_BOOK_HEIGHT}")
 
         self.height = len(self.ascii)
+        self.width = max(len(line.rstrip("\n")) for line in self.ascii)
 
         if len(self.ascii) < MAX_BOOK_HEIGHT:
             padding = [" " * self.width] * (MAX_BOOK_HEIGHT - len(self.ascii))

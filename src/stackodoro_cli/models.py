@@ -16,7 +16,6 @@ class AsciiArtAsset:
 
 @dataclass
 class AppState:
-    bookshelf_count: int = 0
     bookshelf_render: AsciiArtAsset | None = None
     pomodoro_status: PomodoroStatus | None = None
     steam_state: int = 0
