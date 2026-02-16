@@ -1,5 +1,8 @@
 from .models import AsciiArtAsset
 
+def pad_colors(color_list, length):
+            color_list.extend([None] * max(0, length - len(color_list)))
+
 def merge_assets(base: AsciiArtAsset, overlay: AsciiArtAsset, start_y: int) -> None:
     required_height = start_y + len(overlay.lines)
     
@@ -19,9 +22,6 @@ def merge_assets(base: AsciiArtAsset, overlay: AsciiArtAsset, start_y: int) -> N
         
         stripped_fg = fg_line.strip()
         max_len = max(len(bg_line), len(fg_line))
-        
-        def pad_colors(color_list, length):
-            color_list.extend([None] * max(0, length - len(color_list)))
 
         if not stripped_fg:
             base.lines[current_y] = bg_line.ljust(max_len)
@@ -61,13 +61,11 @@ def render_urwid_markup(asset: AsciiArtAsset) -> list:
         
         for x, char in enumerate(line):
             attr = row_attrs[x] if x < len(row_attrs) else None
-            
             if attr != current_attr:
                 if current_text:
                     markup.append((current_attr if current_attr else '', "".join(current_text)))
                 current_attr = attr
                 current_text = []
-            
             current_text.append(char)
         
         if current_text:
@@ -81,4 +79,3 @@ def format_time(seconds: float) -> str:
     m = int(seconds // 60)
     s = int(seconds % 60)
     return f"{m:02d}:{s:02d}"
-    
