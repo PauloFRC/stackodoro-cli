@@ -1,11 +1,20 @@
 from enum import Enum
 import threading
 import time
+from dataclasses import dataclass
 
 class SessionType(Enum):
     WORK = "work"
     BREAK = "break"
     BIG_BREAK = "big_break"
+
+@dataclass
+class PomodoroStatus:
+    session_type: SessionType = SessionType.WORK
+    time_remaining: int = 0
+    is_paused: bool = False
+    is_running: bool = False
+    is_transition_pending: bool = False
 
 class Pomodoro:
     def __init__(self, work_period:int = 25, break_period:int = 5, big_break_period:int = 30, n_cycles:int = 3):
@@ -14,9 +23,9 @@ class Pomodoro:
         self.big_break_period = big_break_period
         self.n_cycles = n_cycles
 
-        self.state: SessionType = SessionType.WORK
-        self.time_remaining: int = self.work_period * 60
-        self.cycles_completed: int = 0
+        self._state: SessionType = SessionType.WORK
+        self._time_remaining: int = self.work_period * 60
+        self._cycles_completed: int = 0
         
         self._lock = threading.Lock()
         self._running = False
@@ -24,6 +33,21 @@ class Pomodoro:
         self._transition_pending = False
         self._thread = None
         self._last_decrement = None
+    
+    def get_status(self):
+        with self._lock:
+            return PomodoroStatus(
+                self._state,
+                self._time_remaining,
+                self._paused,
+                self._running,
+                self._transition_pending
+            )
+    
+    def confirm_transition(self):
+        with self._lock:
+            self._transition_pending = False
+            self._last_decrement = time.time()
     
     def _counter_thread(self):
         with self._lock:
@@ -33,30 +57,32 @@ class Pomodoro:
             current_time = time.time()
             
             with self._lock:
-                elapsed_since_decrement = current_time - self._last_decrement
+                elapsed = current_time - self._last_decrement
                 
-                if not self._paused and not self._transition_pending and self.time_remaining > 0 and elapsed_since_decrement >= 1.0:
-                    self.time_remaining -= 1
+                if (not self._paused and not self._transition_pending and 
+                self._time_remaining > 0 and elapsed >= 1.0):
+
+                    self._time_remaining -= 1
                     self._last_decrement = current_time
 
-                    if self.time_remaining == 0:
-                        self._transition_state()
+                    if self._time_remaining == 0:
+                        self._prepare_transition()
             
             time.sleep(0.05)
     
-    def _transition_state(self):
-        if self.state == SessionType.WORK:
+    def _prepare_transition(self):
+        if self._state == SessionType.WORK:
             self.cycles_completed += 1
             # after n_cycles, use big break otherwise normal break
             if self.cycles_completed % self.n_cycles == 0:
-                self.state = SessionType.BIG_BREAK
-                self.time_remaining = self.big_break_period * 60
+                self._state = SessionType.BIG_BREAK
+                self._time_remaining = self.big_break_period * 60
             else:
-                self.state = SessionType.BREAK
-                self.time_remaining = self.break_period * 60
+                self._state = SessionType.BREAK
+                self._time_remaining = self.break_period * 60
         else: 
-            self.state = SessionType.WORK
-            self.time_remaining = self.work_period * 60
+            self._state = SessionType.WORK
+            self._time_remaining = self.work_period * 60
         
         self._transition_pending = True
     

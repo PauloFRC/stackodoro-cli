@@ -1,4 +1,6 @@
-from .state_manager import StateManager
+from .models import AppState
+from .pomodoro import Pomodoro, SessionType
+from .bookshelf import Bookshelf
 from .presenter import display_view
 from .theme import palette, MinimalButton
 
@@ -6,7 +8,12 @@ import urwid
 
 class App:
     def __init__(self):
-        self.state_manager = StateManager()
+        self.state = AppState()
+
+        # services
+        self.bookshelf = Bookshelf()
+        self.state.bookshelf_count = len(self.bookshelf)
+        self.pomodoro = None
         
         # ASCII art display
         self.display_text = urwid.Text("", align='center', wrap='clip')
@@ -59,12 +66,14 @@ class App:
             palette=palette,
             unhandled_input=self.handle_input
         )
-        
-        self.timer_running = False
-        self.custom_dialog_open = False
-        self.menus_visible = True
+
         self._hide_alarm = None
-    
+
+        self.steam_tick_counter = 0
+        self.steam_update_threshold = 12
+        self.menus_visible = True
+        self.custom_dialog_open = False
+        
         self.loop.set_alarm_in(0.1, self.update_display)
     
     def _auto_hide_menus(self, loop, user_data):
@@ -89,14 +98,16 @@ class App:
         self.columns.contents[2] = (self.right_box, self.columns.options('weight', 1))
     
     def start_preset(self, work_minutes, break_minutes, big_break_minutes):
-        self.state_manager.start_pomodoro(
-            work_minutes=work_minutes,
-            break_minutes=break_minutes,
-            big_break_minutes=big_break_minutes,
+        if self.pomodoro:
+            self.pomodoro.stop()
+            
+        self.pomodoro = Pomodoro(
+            work_period=work_minutes,
+            break_period=break_minutes,
+            big_break_period=big_break_minutes,
             n_cycles=3
         )
-        self.timer_running = True
-        self.state_manager.is_paused = False
+        self.pomodoro.start()
         self.hide_menus()
     
     def show_custom_dialog(self, button=None):
@@ -153,19 +164,36 @@ class App:
         self.loop.widget = self.main_widget
     
     def toggle_pause(self):
-        if self.state_manager.pomodoro:
-            if self.state_manager.is_transition_pending():
-                self.state_manager.transition()
-            elif self.state_manager.is_paused:
-                self.state_manager.play_pomodoro()
-            else:
-                self.state_manager.pause_pomodoro()
+        if not self.pomodoro:
+            return
+            
+        pomodoro_state = self.pomodoro.get_status()
+        
+        if pomodoro_state.is_transition_pending:
+            self.handle_transition()
+        elif pomodoro_state.is_paused:
+            self.pomodoro.play()
+        else:
+            self.pomodoro.pause()
+
+    def handle_transition(self):
+        pomodoro_state = self.pomodoro.get_status()
+        
+        # if we are no longer in WORK (meaning work finished), add a book
+        if pomodoro_state.session_type != SessionType.WORK:
+            self.bookshelf.add_book()
+            self.bookshelf.save()
+            self.state.bookshelf_count += 1
+            
+        self.pomodoro.confirm_transition()
     
     def toggle_music(self, button=None):
         pass
     
     def quit_app(self, button=None):
-        self.state_manager.save_state()
+        self.bookshelf.save()
+        if self.pomodoro:
+            self.pomodoro.stop()
         raise urwid.ExitMainLoop()
     
     def handle_input(self, key):
@@ -179,20 +207,34 @@ class App:
         if key in ('q', 'Q'):
             self.quit_app()
         elif key == ' ':
-            if self.state_manager.pomodoro:
+            if self.pomodoro:
                 self.toggle_pause()
         else:
             if not self.menus_visible:
                 self.show_menus()
-                if self.state_manager.pomodoro:
+                if self.pomodoro:
                     self._schedule_autohide()
             return key
+
+    def update_animations(self):
+        # steam logic
+        pomodoro_state = self.state.pomodoro_status
+        if not pomodoro_state or (not pomodoro_state.is_paused and not pomodoro_state.is_transition_pending):
+            self.steam_tick_counter += 1
+            if self.steam_tick_counter >= self.steam_update_threshold:
+                self.state.steam_state = (self.state.steam_state + 1) % 4
+                self.steam_tick_counter = 0
     
     def update_display(self, loop, user_data=None):
-        self.state_manager.tick()
-        
-        markup_content = display_view(self.state_manager)
+        self.state.bookshelf_count = len(self.bookshelf)
+        self.state.bookshelf_render = self.bookshelf.render()
 
+        if self.pomodoro:
+            self.state.pomodoro_status = self.pomodoro.get_status()
+
+        self.update_animations()
+
+        markup_content = display_view(self.state)
         self.display_text.set_text(markup_content)
         
         loop.set_alarm_in(0.1, self.update_display)
@@ -201,7 +243,7 @@ class App:
         try:
             self.loop.run()
         finally:
-            self.state_manager.save_state()
+            self.bookshelf.save()
 
 def run():
     app = App()

@@ -1,71 +1,75 @@
-from .state_manager import StateManager
+from .models import AppState, AsciiArtAsset
 from .utils import format_time, merge_layers_with_color, render_urwid_markup
 
 from importlib import resources
 
-def display_view(state_manager: StateManager):
-    
-    if state_manager.is_paused:
+def display_view(state: AppState):
+    pomodoro_state = state.pomodoro_status
+    if pomodoro_state and pomodoro_state.is_paused:
         return display_pause()
 
-    bs_lines, bs_attrs = state_manager.bookshelf.render()
+    # bookshelf_render is now an AsciiArtAsset object
+    canvas_asset = state.bookshelf_render
+    if not canvas_asset:
+        return urwid.Text("") # Or your preferred empty state
 
+    # 1. Prepare Steam Asset
+    steam_variations = [
+        [" " * 22 + "    ( (  ", " " * 22 + "     ) ) "],
+        [" " * 22 + "   ) )   ", " " * 22 + "    ( (  "],
+        [" " * 22 + "     ) )  ", " " * 22 + "    ( (   "],
+        [" " * 22 + "    ( )   ", " " * 22 + "    ) (   "]
+    ]
+    steam_lines = steam_variations[state.steam_state]
+    steam_asset = AsciiArtAsset(
+        lines=steam_lines,
+        colors=[['steam_color'] * len(line) for line in steam_lines]
+    )
+
+    # 2. Prepare Table Asset
     with resources.files('stackodoro_cli').joinpath('res/table.txt').open('r') as f:
         table_lines = [line.rstrip('\n') for line in f]
+    table_asset = AsciiArtAsset(
+        lines=table_lines,
+        colors=[['table_color'] * len(line) for line in table_lines]
+    )
 
-    steam_variations = [
-        [
-            " " * 22 + "    ( (  ", 
-            " " * 22 + "     ) ) "
-            ],
-        [
-            " " * 22 + "   ) )   ", 
-            " " * 22 + "    ( (  "
-            ],
-        [
-            " " * 22 + "     ) )  ", 
-            " " * 22 + "    ( (   "
-            ],
-        [
-            " " * 22 + "    ( )   ", 
-            " " * 22 + "    ) (   "
-            ]
-    ]
-    steam_lines = steam_variations[state_manager.steam_state]
-
-    canvas = bs_lines.copy()
-    attr_canvas: list[list[str|None]] = [row[:] for row in bs_attrs]
-
-    merge_layers_with_color(canvas, attr_canvas, [], 0, None)
-    
+    # 3. Layering Logic
     OVERLAP = 6
-    table_y = len(canvas) - OVERLAP
-    steam_y = table_y - 1
+    # Use len(canvas_asset) thanks to our __len__ implementation
+    table_y = len(canvas_asset) - OVERLAP
+    steam_y = table_y - len(steam_asset) # Position steam relative to table height
 
-    merge_layers_with_color(canvas, attr_canvas, table_lines, table_y, 'table_color')
+    # Assuming merge_layers_with_color is updated to accept the Asset object
+    # Or you can perform the merge on the underlying lines/colors
+    canvas, attr_canvas = canvas_asset.lines.copy(), [row[:] for row in canvas_asset.colors]
 
-    merge_layers_with_color(canvas, attr_canvas, steam_lines, steam_y, 'steam_color')
+    merge_layers_with_color(canvas, attr_canvas, table_asset.lines, table_y, 'table_color')
+    merge_layers_with_color(canvas, attr_canvas, steam_asset.lines, steam_y, 'steam_color')
 
-    timer_str = " " * 39 + f"{format_time(state_manager.pomodoro.read()) if state_manager.pomodoro else '00:00'}"
-    
-    timer_y = len(bs_lines) - 2
+    # 4. Timer Logic
+    time_text = format_time(state.pomodoro_status.time_remaining) if state.pomodoro_status else '00:00'
+    timer_str = " " * 39 + time_text
+    timer_y = len(canvas_asset) - 2
     
     merge_layers_with_color(canvas, attr_canvas, [timer_str], timer_y, 'timer_color')
 
+    # 5. Final Formatting
     max_width = max(len(line) for line in canvas) if canvas else 0
     centered_canvas = [line.ljust(max_width) for line in canvas]
 
-    if state_manager.is_transition_pending():
-        centered_canvas, attr_canvas = overlay_transition_modal(centered_canvas, attr_canvas, state_manager)
+    if pomodoro_state and pomodoro_state.is_transition_pending:
+        centered_canvas, attr_canvas = overlay_transition_modal(centered_canvas, attr_canvas, state)
 
     return render_urwid_markup(centered_canvas, attr_canvas)
 
-def overlay_transition_modal(canvas: list[str], attr_canvas: list[list[str]], state_manager: StateManager) -> tuple[list[str], list[list[str]]]:
-    if not state_manager.pomodoro:
+def overlay_transition_modal(canvas: list[str], attr_canvas: list[list[str]], state: AppState) -> tuple[list[str], list[list[str]]]:
+    pomodoro_state = state.pomodoro_status
+    if not pomodoro_state:
         return canvas, attr_canvas
     
-    block_type = state_manager.pomodoro.state.value
-    time_remaining = format_time(state_manager.pomodoro.read())
+    block_type = pomodoro_state.session_type.value
+    time_remaining = format_time(pomodoro_state.time_remaining)
     type_display = {
         'work': 'Work',
         'break': 'Break',
