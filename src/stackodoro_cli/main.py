@@ -1,10 +1,14 @@
 import urwid
+import json
+import os
+from pathlib import Path
 
 from .menus import LeftMenu, RightMenu, CustomTimerDialog
 from .theme import palette
 from .models import AppState
 from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
+from .book import Book
 from .presenter import display_view
 from .audio import AudioMixer
 
@@ -14,6 +18,8 @@ class App:
 
         # services
         self.bookshelf = Bookshelf()
+        self._init_storage()
+        self._load_data()
         self.pomodoro = None
         self.mixer = AudioMixer()
         
@@ -56,6 +62,43 @@ class App:
         self.mixer.play_session_complete()
         
         self.loop.set_alarm_in(0.1, self.update_display)
+    
+    def _init_storage(self):
+        data_home = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
+        self.storage_dir = Path(data_home) / 'stackodoro-cli'
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self.storage_file = self.storage_dir / 'bookshelf.json'
+        
+    def _load_data(self):
+        books = []
+        n_completed = 0
+        
+        if self.storage_file.exists():
+            try:
+                with open(self.storage_file, 'r') as f:
+                    data = json.load(f)
+                    n_completed = data.get('n_shelfs_completed', 0)
+                    for b in data.get('books', []):
+                        books.append(Book(ascii=b['ascii'], color=b['color']))
+            except (json.JSONDecodeError, KeyError):
+                pass
+                
+        self.bookshelf.load_books(books, n_completed)
+        self.state.n_shelfs_completed = n_completed
+        
+    def save_data(self):
+        data = {
+            'n_shelfs_completed': self.bookshelf.n_shelfs_completed,
+            'books': [
+                {
+                    'ascii': book.ascii,
+                    'color': book.color
+                }
+                for book in self.bookshelf.get_books()
+            ]
+        }
+        with open(self.storage_file, 'w') as f:
+            json.dump(data, f, indent=2)
     
     def _auto_hide_menus(self, loop, user_data):
         self.hide_menus()
@@ -139,7 +182,7 @@ class App:
         # if we are no longer in WORK (meaning work finished), add a book
         if pomodoro_state.session_type != SessionType.WORK:
             self.bookshelf.add_book()
-            self.bookshelf.save()
+            self.save_data()
             
         self.pomodoro.confirm_transition()
     
@@ -147,7 +190,7 @@ class App:
         pass
     
     def quit_app(self):
-        self.bookshelf.save()
+        self.save_data()
         if self.pomodoro:
             self.pomodoro.stop()
         if self.mixer:
@@ -186,6 +229,7 @@ class App:
     
     def update_display(self, loop, user_data=None):
         self.state.bookshelf_render = self.bookshelf.render()
+        self.state.n_shelfs_completed = self.bookshelf.get_n_shelfs_completed()
 
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
@@ -209,7 +253,7 @@ class App:
         try:
             self.loop.run()
         finally:
-            self.bookshelf.save()
+            self.save_data()
 
 def run():
     app = App()

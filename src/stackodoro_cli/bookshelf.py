@@ -2,9 +2,6 @@ from .book import Book, book_options
 from .models import AsciiArtAsset
 
 from random import choice
-import json
-import os
-from pathlib import Path
 
 SHELF_HEIGHT = 8
 
@@ -25,8 +22,7 @@ class Bookshelf:
             "||" + ("_" * self.shelf_width) + "||"
         ]
         self._completed_books: list[Book] = []
-        self._init_storage_path()
-        self._load()
+        self.n_shelfs_completed: int = 0
     
     def _init_storage_path(self):
         data_home = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
@@ -34,36 +30,49 @@ class Bookshelf:
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.storage_file = self.storage_dir / 'bookshelf.json'
     
-    def _load(self):
-        if self.storage_file.exists():
-            try:
-                with open(self.storage_file, 'r') as f:
-                    data = json.load(f)
-                    self._completed_books = []
-                    for book_data in data.get('books', []):
-                        book = Book(
-                            ascii=book_data['ascii'],
-                            color=book_data['color']
-                        )
-                        self._completed_books.append(book)
-            except (json.JSONDecodeError, KeyError):
-                self._completed_books = []
+    def load_books(self, books: list[Book], n_shelfs_completed: int):
+        self._completed_books = books
+        self.n_shelfs_completed = n_shelfs_completed
     
-    def save(self):
-        data = {
-            'books': [
-                {
-                    'ascii': book.ascii,
-                    'color': book.color
-                }
-                for book in self._completed_books
-            ]
-        }
-        with open(self.storage_file, 'w') as f:
-            json.dump(data, f, indent=2)
+    def get_books(self) -> list[Book]:
+        return self._completed_books
+
+    def get_n_shelfs_completed(self):
+        return self.n_shelfs_completed
+    
+    def _pack_books(self, books: list[Book]) -> list[list[Book]]:
+        shelves = []
+        current_shelf = []
+        used_width = 0
+
+        for book in books:
+            effective_width = book.width if not current_shelf else (book.width - 1)
+            
+            if used_width + effective_width <= self.shelf_width:
+                current_shelf.append(book)
+                used_width += effective_width
+            else:
+                # shelf full, start a new one
+                shelves.append(current_shelf)
+                current_shelf = [book]
+                used_width = book.width
+
+        if current_shelf:
+            shelves.append(current_shelf)
+
+        return shelves
     
     def add_book(self):
-        self._completed_books.append(choice(book_options)) 
+        new_book = choice(book_options)
+        
+        test_books = self._completed_books + [new_book]
+        packed_shelves = self._pack_books(test_books)
+        
+        if len(packed_shelves) > self.n_shelfs:
+            self.n_shelfs_completed += 1
+            self._completed_books = [new_book]
+        else:
+            self._completed_books.append(new_book)
 
     def _resolve_border(self, left_char: str, right_char: str) -> str:
         # determines merged character priority
@@ -81,51 +90,44 @@ class Bookshelf:
     
     def render(self) -> AsciiArtAsset:
         result = AsciiArtAsset([], [])
-        
         result.extend(self._add_shelf_part(self.top))
         
-        books_to_place: list[Book] = self._completed_books.copy()
+        packed_shelves = self._pack_books(self._completed_books)
 
         for shelf_i in range(self.n_shelfs):
             current_rows = ["||"] * SHELF_HEIGHT
             current_attrs = [['shelf_color'] * 2 for _ in range(SHELF_HEIGHT)]
             
+            books_on_shelf = packed_shelves[shelf_i] if shelf_i < len(packed_shelves) else []
             used_width = 0
             previous_book: Book | None = None
 
-            while books_to_place:
-                next_book = books_to_place[0]
-                is_first_book = (used_width == 0)
-                effective_width = next_book.width if is_first_book else (next_book.width - 1)
+            for index, book in enumerate(books_on_shelf):
+                is_first_book = (index == 0)
+                effective_width = book.width if is_first_book else (book.width - 1)
+                used_width += effective_width
 
-                if used_width + effective_width <= self.shelf_width:
-                    book = books_to_place.pop(0)
-                    book_color = book.color
-
-                    for i in range(SHELF_HEIGHT):
-                        if is_first_book:
-                            current_rows[i] += book.ascii[i]
-                            current_attrs[i].extend([book_color] * len(book.ascii[i]))
+                for i in range(SHELF_HEIGHT):
+                    if is_first_book:
+                        current_rows[i] += book.ascii[i]
+                        current_attrs[i].extend([book.color] * len(book.ascii[i]))
+                    else:
+                        left_char = current_rows[i][-1]
+                        right_char = book.ascii[i][0]
+                        merged_char = self._resolve_border(left_char, right_char)
+                        
+                        current_rows[i] = current_rows[i][:-1] + merged_char + book.ascii[i][1:]
+                        
+                        if book.height >= previous_book.height:
+                            final_border_color = book.color
                         else:
-                            left_char = current_rows[i][-1]
-                            right_char = book.ascii[i][0]
-                            merged_char = self._resolve_border(left_char, right_char)
-                            
-                            current_rows[i] = current_rows[i][:-1] + merged_char + book.ascii[i][1:]
-                            
-                            if book.height >= previous_book.height:
-                                final_border_color = book.color
-                            else:
-                                final_border_color = previous_book.color
+                            final_border_color = previous_book.color
 
-                            current_attrs[i].pop()
-                            current_attrs[i].append(final_border_color)
-                            current_attrs[i].extend([book_color] * (len(book.ascii[i]) - 1))
+                        current_attrs[i].pop()
+                        current_attrs[i].append(final_border_color)
+                        current_attrs[i].extend([book.color] * (len(book.ascii[i]) - 1))
 
-                    used_width += effective_width
-                    previous_book = book
-                else:
-                    break
+                previous_book = book
             
             remaining_space = self.shelf_width - used_width
             for i in range(SHELF_HEIGHT):

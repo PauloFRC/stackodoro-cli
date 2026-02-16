@@ -56,8 +56,15 @@ def display_view(state: AppState) -> list:
 
     if pomodoro_state and pomodoro_state.is_transition_pending:
         overlay_transition_modal(base_canvas, state)
+    
+    # add top sign when at least one shelf was completed
+    if state.n_shelfs_completed > 0:
+        final_canvas = completed_sign_asset(state.n_shelfs_completed)
+        final_canvas.extend(base_canvas)
+    else:
+        final_canvas = base_canvas
 
-    return render_urwid_markup(base_canvas)
+    return render_urwid_markup(final_canvas)
 
 
 def overlay_transition_modal(canvas: AsciiArtAsset, state: AppState) -> None:
@@ -105,3 +112,15 @@ def display_pause() -> list:
         "============",
     ]
     return [('bold_text', "\n".join(pause_msg))]
+
+def completed_sign_asset(n_completed:int) -> AsciiArtAsset:
+    n_completed_txt = f"{min(n_completed, 99):02d}"
+
+    with resources.files('stackodoro_cli').joinpath('res/sign.txt').open('r') as f:
+        sign_lines = [line.rstrip('\n') for line in f]
+    
+    sign_lines[2] = sign_lines[2].replace("$$", n_completed_txt)
+    return AsciiArtAsset(
+        lines=sign_lines,
+        colors=[['sign_color'] * len(line) for line in sign_lines]
+    )
