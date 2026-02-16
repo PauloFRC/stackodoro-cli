@@ -6,6 +6,7 @@ from .models import AppState
 from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
 from .presenter import display_view
+from .audio import AudioMixer
 
 class App:
     def __init__(self):
@@ -15,6 +16,7 @@ class App:
         self.bookshelf = Bookshelf()
         self.state.bookshelf_count = len(self.bookshelf)
         self.pomodoro = None
+        self.mixer = AudioMixer()
         
         # ASCII art display
         self.display_text = urwid.Text("", align='center', wrap='clip')
@@ -49,6 +51,10 @@ class App:
         self.steam_update_threshold = 12
         self.menus_visible = True
         self.active_dialog: CustomTimerDialog | None = None
+        self._transition_sound_played = False
+
+        # for now, plays session complete effect on init
+        self.mixer.play_session_complete()
         
         self.loop.set_alarm_in(0.1, self.update_display)
     
@@ -143,6 +149,8 @@ class App:
         self.bookshelf.save()
         if self.pomodoro:
             self.pomodoro.stop()
+        if self.mixer:
+            self.mixer.quit()
         raise urwid.ExitMainLoop()
     
     def handle_input(self, key):
@@ -179,6 +187,13 @@ class App:
 
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
+
+            if self.state.pomodoro_status.is_transition_pending:
+                if not self._transition_sound_played:
+                    self.mixer.play_session_complete()
+                    self._transition_sound_played = True
+            else:
+                self._transition_sound_played = False
 
         self.update_animations()
 

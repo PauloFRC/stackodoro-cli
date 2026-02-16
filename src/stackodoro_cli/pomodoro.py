@@ -29,7 +29,7 @@ class Pomodoro:
         self._running = False
         self._paused = False
         self._transition_pending = False
-        self._last_update_time: float | None = None
+        self._last_decrement: float | None = None
     
     def get_status(self):
         self._update_clock()
@@ -46,11 +46,11 @@ class Pomodoro:
             return
 
         now = time.time()
-        if self._last_update_time is not None:
-            elapsed = now - self._last_update_time
+        if self._last_decrement is not None:
+            elapsed = now - self._last_decrement
             self._time_remaining -= elapsed
 
-        self._last_update_time = now
+        self._last_decrement = now
 
         if self._time_remaining <= 0:
             self._time_remaining = 0
@@ -62,9 +62,9 @@ class Pomodoro:
     
     def _prepare_transition(self):
         if self._state == SessionType.WORK:
-            self.cycles_completed += 1
+            self._cycles_completed += 1
             # after n_cycles, use big break otherwise normal break
-            if self.cycles_completed % self.n_cycles == 0:
+            if self._cycles_completed % self.n_cycles == 0:
                 self._state = SessionType.BIG_BREAK
                 self._time_remaining = self.big_break_period * 60
             else:
@@ -80,7 +80,7 @@ class Pomodoro:
         if not self._running:
             self._running = True
             self._paused = False
-            self._last_update_time = time.time()
+            self._last_decrement = time.time()
     
     def stop(self):
         self._running = False
@@ -97,3 +97,4 @@ class Pomodoro:
         
     def transition(self):
         self._transition_pending = False
+        self.play()

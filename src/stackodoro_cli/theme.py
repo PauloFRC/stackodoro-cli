@@ -6,7 +6,7 @@ palette = [
     # focused button
      ('minimal_button_focus', 'black,bold', 'light gray'),
 
-    ('table_color', 'brown', ''),
+    ('table_color', 'yellow', ''),
     ('steam_color', 'white,bold', ''),
     ('timer_color', 'white,bold', ''),
 

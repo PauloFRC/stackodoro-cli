@@ -113,9 +113,10 @@ class Bookshelf:
                             
                             current_rows[i] = current_rows[i][:-1] + merged_char + book.ascii[i][1:]
                             
-                            left_is_content = left_char != ' '
-                            right_is_content = right_char != ' '
-                            final_border_color = book_color if right_is_content or not left_is_content else previous_book.color
+                            if book.height >= previous_book.height:
+                                final_border_color = book.color
+                            else:
+                                final_border_color = previous_book.color
 
                             current_attrs[i].pop()
                             current_attrs[i].append(final_border_color)
