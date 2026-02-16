@@ -1,19 +1,18 @@
 from .models import AppState, AsciiArtAsset
-from .utils import format_time, merge_layers_with_color, render_urwid_markup
+from .utils import format_time, merge_assets, render_urwid_markup
 
 from importlib import resources
 
-def display_view(state: AppState):
+def display_view(state: AppState) -> list:
     pomodoro_state = state.pomodoro_status
     if pomodoro_state and pomodoro_state.is_paused:
         return display_pause()
 
-    # bookshelf_render is now an AsciiArtAsset object
-    canvas_asset = state.bookshelf_render
-    if not canvas_asset:
-        return urwid.Text("") # Or your preferred empty state
+    base_canvas = AsciiArtAsset(
+        lines=state.bookshelf_render.lines.copy(),
+        colors=[row[:] for row in state.bookshelf_render.colors]
+    )
 
-    # 1. Prepare Steam Asset
     steam_variations = [
         [" " * 22 + "    ( (  ", " " * 22 + "     ) ) "],
         [" " * 22 + "   ) )   ", " " * 22 + "    ( (  "],
@@ -26,7 +25,6 @@ def display_view(state: AppState):
         colors=[['steam_color'] * len(line) for line in steam_lines]
     )
 
-    # 2. Prepare Table Asset
     with resources.files('stackodoro_cli').joinpath('res/table.txt').open('r') as f:
         table_lines = [line.rstrip('\n') for line in f]
     table_asset = AsciiArtAsset(
@@ -34,39 +32,38 @@ def display_view(state: AppState):
         colors=[['table_color'] * len(line) for line in table_lines]
     )
 
-    # 3. Layering Logic
     OVERLAP = 6
-    # Use len(canvas_asset) thanks to our __len__ implementation
-    table_y = len(canvas_asset) - OVERLAP
-    steam_y = table_y - len(steam_asset) # Position steam relative to table height
+    table_y = len(base_canvas) - OVERLAP
+    steam_y = table_y - len(steam_asset)
 
-    # Assuming merge_layers_with_color is updated to accept the Asset object
-    # Or you can perform the merge on the underlying lines/colors
-    canvas, attr_canvas = canvas_asset.lines.copy(), [row[:] for row in canvas_asset.colors]
+    merge_assets(base_canvas, table_asset, table_y)
+    merge_assets(base_canvas, steam_asset, steam_y)
 
-    merge_layers_with_color(canvas, attr_canvas, table_asset.lines, table_y, 'table_color')
-    merge_layers_with_color(canvas, attr_canvas, steam_asset.lines, steam_y, 'steam_color')
-
-    # 4. Timer Logic
     time_text = format_time(state.pomodoro_status.time_remaining) if state.pomodoro_status else '00:00'
     timer_str = " " * 39 + time_text
-    timer_y = len(canvas_asset) - 2
+    timer_y = len(base_canvas) - 7
+    timer_asset = AsciiArtAsset(
+        lines=[timer_str],
+        colors=[['timer_color'] * len(timer_str)]
+    )
     
-    merge_layers_with_color(canvas, attr_canvas, [timer_str], timer_y, 'timer_color')
+    merge_assets(base_canvas, timer_asset, timer_y)
 
-    # 5. Final Formatting
-    max_width = max(len(line) for line in canvas) if canvas else 0
-    centered_canvas = [line.ljust(max_width) for line in canvas]
+    max_width = max(len(line) for line in base_canvas.lines) if base_canvas.lines else 0
+    base_canvas.lines = [line.ljust(max_width) for line in base_canvas.lines]
+    for row in base_canvas.colors:
+        row.extend([None] * max(0, max_width - len(row)))
 
     if pomodoro_state and pomodoro_state.is_transition_pending:
-        centered_canvas, attr_canvas = overlay_transition_modal(centered_canvas, attr_canvas, state)
+        overlay_transition_modal(base_canvas, state)
 
-    return render_urwid_markup(centered_canvas, attr_canvas)
+    return render_urwid_markup(base_canvas)
 
-def overlay_transition_modal(canvas: list[str], attr_canvas: list[list[str]], state: AppState) -> tuple[list[str], list[list[str]]]:
+
+def overlay_transition_modal(canvas: AsciiArtAsset, state: AppState) -> None:
     pomodoro_state = state.pomodoro_status
     if not pomodoro_state:
-        return canvas, attr_canvas
+        return
     
     block_type = pomodoro_state.session_type.value
     time_remaining = format_time(pomodoro_state.time_remaining)
@@ -92,20 +89,20 @@ def overlay_transition_modal(canvas: list[str], attr_canvas: list[list[str]], st
     modal_height = len(modal_lines)
     
     start_y = max(0, (canvas_height - modal_height) // 2)    
+    
     for i, modal_line in enumerate(modal_lines):
         y = start_y + i
-        if y < len(canvas):
-            centered_modal = modal_line.center(len(canvas[y]))
-            canvas[y] = centered_modal
-            attr_canvas[y] = ['bold_text'] * len(centered_modal)
-    
-    return canvas, attr_canvas
+        if y < len(canvas.lines):
+            centered_modal = modal_line.center(len(canvas.lines[y]))
+            canvas.lines[y] = centered_modal
+            canvas.colors[y] = ['bold_text'] * len(centered_modal)
 
-def display_pause():
+
+def display_pause() -> list:
     pause_msg = [
-            "============",
-            "   PAUSED   ",
-            "============",
-        ]
+        "============",
+        "   PAUSED   ",
+        "============",
+    ]
     return [('bold_text', "\n".join(pause_msg))]
     

@@ -2,7 +2,7 @@ from .pomodoro import PomodoroStatus
 
 from dataclasses import dataclass, field
 
-@dataclass(frozen=True)
+@dataclass
 class AsciiArtAsset:
     lines: list[str] = field(default_factory=list)
     colors: list[list[str]] = field(default_factory=list)

@@ -1,102 +1,61 @@
-import shutil
+from .models import AsciiArtAsset
 
-def merge_row(bg_row: str, fg_row: str) -> str:
-    # identify solid bounds of the foreground
-    stripped_fg = fg_row.strip()
-    if not stripped_fg:
-        return bg_row
-
-    start_index = fg_row.find(stripped_fg[0])
-    end_index = fg_row.rfind(stripped_fg[-1])
-
-    max_len = max(len(bg_row), len(fg_row))
-    bg_row = bg_row.ljust(max_len)
-    fg_row = fg_row.ljust(max_len)
-
-    result = []
-    for i in range(max_len):
-        # if inside the solid part of the foreground, use foreground
-        if start_index <= i <= end_index:
-            result.append(fg_row[i])
-        else:
-            result.append(bg_row[i])
-
-    return "".join(result)
-
-def merge_layers(background: list[str], foreground: list[str], start_y: int) -> list[str]:
-    canvas = background[:]
+def merge_assets(base: AsciiArtAsset, overlay: AsciiArtAsset, start_y: int) -> None:
+    required_height = start_y + len(overlay.lines)
     
-    required_height = start_y + len(foreground)
-    if required_height > len(canvas):
-        extension = [""] * (required_height - len(canvas))
-        canvas.extend(extension)
+    if required_height > len(base.lines):
+        extension_len = required_height - len(base.lines)
+        base.lines.extend([""] * extension_len)
+        base.colors.extend([[] for _ in range(extension_len)])
 
-    for i, fg_line in enumerate(foreground):
-        current_y = start_y + i        
+    for i, fg_line in enumerate(overlay.lines):
+        current_y = start_y + i
         if current_y < 0: 
             continue
             
-        bg_line = canvas[current_y]
-        canvas[current_y] = merge_row(bg_line, fg_line)
-
-    return canvas
-
-def merge_layers_with_color(
-    text_canvas: list[str], 
-    attr_canvas: list[list[str | None]], 
-    foreground: list[str], 
-    start_y: int, 
-    color_attr: str | None
-):
-    required_height = start_y + len(foreground)
-    if required_height > len(text_canvas):
-        extension = [""] * (required_height - len(text_canvas))
-        text_canvas.extend(extension)
-        for _ in range(required_height - len(attr_canvas)):
-            attr_canvas.append([])
-
-    for i, fg_row in enumerate(foreground):
-        current_y = start_y + i
-        if current_y < 0: continue
-            
-        bg_row = text_canvas[current_y]
+        bg_line = base.lines[current_y]
+        fg_colors = overlay.colors[i] if i < len(overlay.colors) else []
+        bg_colors = base.colors[current_y]
         
-        stripped_fg = fg_row.strip()
+        stripped_fg = fg_line.strip()
+        max_len = max(len(bg_line), len(fg_line))
+        
+        def pad_colors(color_list, length):
+            color_list.extend([None] * max(0, length - len(color_list)))
+
         if not stripped_fg:
-            max_len = max(len(bg_row), len(fg_row))
-            text_canvas[current_y] = bg_row.ljust(max_len)
-            _pad_attr_row(attr_canvas, current_y, max_len)
+            base.lines[current_y] = bg_line.ljust(max_len)
+            pad_colors(bg_colors, max_len)
             continue
 
-        start_index = fg_row.find(stripped_fg[0])
-        end_index = fg_row.rfind(stripped_fg[-1])
-        max_len = max(len(bg_row), len(fg_row))
+        # solid bounds of the foreground art
+        start_index = fg_line.find(stripped_fg[0])
+        end_index = fg_line.rfind(stripped_fg[-1])
         
-        text_canvas[current_y] = merge_row(bg_row, fg_row)
-
-        _pad_attr_row(attr_canvas, current_y, max_len)
-        row_attrs = attr_canvas[current_y]
+        bg_line = bg_line.ljust(max_len)
+        pad_colors(bg_colors, max_len)
         
+        fg_colors_padded = list(fg_colors)
+        pad_colors(fg_colors_padded, max_len)
+        
+        merged_line = list(bg_line)
         for x in range(start_index, end_index + 1):
-            row_attrs[x] = color_attr
+            merged_line[x] = fg_line[x]
+            if fg_colors_padded[x] is not None:
+                bg_colors[x] = fg_colors_padded[x]
+                
+        base.lines[current_y] = "".join(merged_line)
 
-def _pad_attr_row(attr_canvas, row_idx, length):
-    while len(attr_canvas) <= row_idx:
-        attr_canvas.append([])
-    row = attr_canvas[row_idx]
-    if len(row) < length:
-        row.extend([None] * (length - len(row)))
-
-def render_urwid_markup(text_canvas: list[str], attr_canvas: list[list[str | None]]):
+def render_urwid_markup(asset: AsciiArtAsset) -> list:
     markup = []
     
-    for y, line in enumerate(text_canvas):
-        if y >= len(attr_canvas):
+    for y, line in enumerate(asset.lines):
+        if y >= len(asset.colors):
             markup.append(line)
             markup.append('\n')
             continue
             
-        row_attrs = attr_canvas[y]
+        row_attrs = asset.colors[y]
         current_attr = None
         current_text = []
         
@@ -118,7 +77,8 @@ def render_urwid_markup(text_canvas: list[str], attr_canvas: list[list[str | Non
         
     return markup
 
-def format_time(seconds):
+def format_time(seconds: float) -> str:
     m = int(seconds // 60)
     s = int(seconds % 60)
     return f"{m:02d}:{s:02d}"
+    
