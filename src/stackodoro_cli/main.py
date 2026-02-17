@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from itertools import dropwhile
 
-from .menus import LeftMenu, RightMenu, CustomTimerDialog, VolumeDisplay
+from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
 from .models import AppState
 from .pomodoro import Pomodoro, SessionType
@@ -21,10 +21,10 @@ class App:
 
         # services
         self.bookshelf = Bookshelf()
+        self.mixer = AudioMixer(self.volume)
         self._init_storage()
         self._load_data()
         self.pomodoro = None
-        self.mixer = AudioMixer(self.volume)
         
         # ASCII art display
         self.display_text = urwid.Text("", align='center', wrap='clip')
@@ -37,6 +37,7 @@ class App:
             on_quit=self.quit_app
         )
         self.right_menu = RightMenu(
+            on_set_playlist=self.show_playlist_picker_dialog,
             on_music=self.toggle_music
         )
         self.volume_display = VolumeDisplay(self.volume)
@@ -60,7 +61,8 @@ class App:
         self.steam_tick_counter = 0
         self.steam_update_threshold = 12
         self.menus_visible = True
-        self.active_dialog: CustomTimerDialog | None = None
+        self.active_pomodoro_dialog: CustomTimerDialog | None = None
+        self.active_playlist_dialog: PlaylistPickerDialog | None = None
         self._transition_sound_played = False
         self._play_shelf_completed = False
 
@@ -92,8 +94,13 @@ class App:
         self.bookshelf.load_books(books, n_completed)
         self.state.n_shelfs_completed = n_completed
         
+        playlist_dir = data.get('playlist_dir')
+        if playlist_dir:
+            self.mixer.load_playlist(playlist_dir)
+        
     def save_data(self):
         data = {
+            'playlist_dir': self.mixer.dir if self.mixer else None,
             'n_shelfs_completed': self.bookshelf.n_shelfs_completed,
             'books': [
                 {
@@ -161,16 +168,16 @@ class App:
     
     # custom pomodoro dialog
     def show_custom_dialog(self):
-        if self.active_dialog:
+        if self.active_pomodoro_dialog:
             return
             
-        self.active_dialog = CustomTimerDialog(
+        self.active_pomodoro_dialog = CustomTimerDialog(
             on_start=self.start_custom_timer,
-            on_cancel=self.close_custom_dialog
+            on_cancel=self.close_pomodoro_dialog
         )
         
         overlay = urwid.Overlay(
-            self.active_dialog,
+            self.active_pomodoro_dialog,
             self.main_widget,
             align='center',
             width=('relative', 40),
@@ -179,13 +186,41 @@ class App:
         )
         
         self.loop.widget = overlay
-    
+
+    # playlist dir picker dialog
+    def show_playlist_picker_dialog(self):
+        if self.active_playlist_dialog:
+            return
+        
+        self.active_playlist_dialog = PlaylistPickerDialog(
+            on_apply=self.set_playlist_directory,
+            on_cancel=self.close_playlist_picker_dialog
+        )
+
+        overlay = urwid.Overlay(
+            self.active_playlist_dialog,
+            self.main_widget,
+            align='center',
+            width=('relative', 40),
+            valign='middle',
+            height=('relative', 40)
+        )
+        self.loop.widget = overlay
+
     def start_custom_timer(self, work, break_time, big_break):
-        self.close_custom_dialog()
+        self.close_pomodoro_dialog()
         self.start_preset(work, break_time, big_break)
     
-    def close_custom_dialog(self):
-        self.active_dialog = None
+    def set_playlist_directory(self, dir):
+        self.mixer.load_playlist(dir)
+        self.close_playlist_picker_dialog()
+    
+    def close_pomodoro_dialog(self):
+        self.active_pomodoro_dialog = None
+        self.loop.widget = self.main_widget
+
+    def close_playlist_picker_dialog(self):
+        self.active_playlist_dialog = None
         self.loop.widget = self.main_widget
 
     def adjust_volume(self, delta):
@@ -221,9 +256,30 @@ class App:
             self.save_data()
             
         self.pomodoro.confirm_transition()
-    
+
     def toggle_music(self):
-        pass
+        if not self.mixer:
+            return
+        
+        if self.mixer.playing:
+            self.mixer.stop()
+        else:
+            self.mixer.play_playlist()
+        # update button label to reflect new state
+        try:
+            self.right_menu.set_play_pause_label(self.mixer.playing)
+        except Exception:
+            pass
+    
+    def play_playlist(self):
+        try:
+            self.mixer.play_playlist()
+        except RuntimeError as e:
+            # TODO: show error in UI instead of just printing
+            raise RuntimeError(f"Error playing playlist: {e}")
+
+    def stop_playlist(self):
+        self.mixer.stop()
     
     def quit_app(self):
         self.save_data()
@@ -234,11 +290,18 @@ class App:
         raise urwid.ExitMainLoop()
     
     def handle_input(self, key):
-        if self.active_dialog:
+        if self.active_pomodoro_dialog:
             if key == 'esc':
-                self.close_custom_dialog()
+                self.close_pomodoro_dialog()
             elif key == 'enter':
-                self.active_dialog.try_submit()
+                self.active_pomodoro_dialog.try_submit()
+            return
+        
+        if self.active_playlist_dialog:
+            if key == 'esc':
+                self.close_playlist_picker_dialog()
+            elif key == 'enter':
+                self.active_playlist_dialog.try_submit()
             return
         
         if key in ('+', '='):

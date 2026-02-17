@@ -28,19 +28,24 @@ class LeftMenu(urwid.WidgetWrap):
 
 # other controls
 class RightMenu(urwid.WidgetWrap):
-    def __init__(self, on_music):
-        btn_music = MinimalButton("Play Music", on_press=lambda _: on_music())
+    def __init__(self, on_set_playlist, on_music):
+        btn_set_playlist = MinimalButton("Set Playlist Dir", on_press=lambda _: on_set_playlist())
+        self.btn_play_pause = MinimalButton("Play Music", on_press=lambda _: on_music())
         
         pile = urwid.Pile([
             urwid.Text("Controls", align='center'),
             urwid.Divider(),
-            btn_music,
+            btn_set_playlist,
+            self.btn_play_pause,
         ])
         
         padded = urwid.Padding(pile, align='center', width=20)
         filler = urwid.Filler(padded, 'middle')
         super().__init__(filler)
 
+    def set_play_pause_label(self, is_playing: bool):
+        label = "Pause Music" if is_playing else "Play Music"
+        self.btn_play_pause._label.set_text(label)
 
 class CustomTimerDialog(urwid.WidgetWrap):
     def __init__(self, on_start, on_cancel):
@@ -75,6 +80,35 @@ class CustomTimerDialog(urwid.WidgetWrap):
             break_time = int(self.break_edit.get_edit_text())
             big_break = int(self.big_break_edit.get_edit_text())
             self.on_start_callback(work, break_time, big_break)
+        except ValueError:
+            pass # ignore
+
+class PlaylistPickerDialog(urwid.WidgetWrap):
+    def __init__(self, on_apply, on_cancel):
+        self.on_apply_callback = on_apply
+        
+        self.playlist_dir = urwid.Edit("Dir: ", "")
+        
+        apply_btn = MinimalButton("Apply", on_press=self.try_submit)
+        cancel_btn = MinimalButton("Cancel", on_press=lambda _: on_cancel())
+        
+        dialog_pile = urwid.Pile([
+            urwid.Text("Playlist Directory Picker (accepts mp3, wav, flac and ogg)", align='center'),
+            urwid.Divider(),
+            self.playlist_dir,
+            urwid.Divider(),
+            urwid.Columns([
+                apply_btn,
+                cancel_btn,
+            ]),
+        ])
+        
+        box = urwid.LineBox(urwid.Filler(dialog_pile, 'middle'))
+        super().__init__(box)
+
+    def try_submit(self, button=None):
+        try:
+            self.on_apply_callback(self.playlist_dir.get_edit_text())
         except ValueError:
             pass # ignore
 

@@ -25,6 +25,7 @@ class AudioMixer:
             except Exception as e:
                 raise FileNotFoundError(f"Error: Could not load {filename}: {e}")
 
+        self.dir = None
         self.playlist = []
         self.current_track_index = 0
         self.playing = False
@@ -46,6 +47,7 @@ class AudioMixer:
         self.volume = max(0.0, min(1.0, volume_level))
 
     def load_playlist(self, directory_path):
+        self.dir = directory_path
         path = Path(directory_path)
         if not path.is_dir(): 
             return
@@ -56,32 +58,38 @@ class AudioMixer:
             random.shuffle(self.playlist)
             self.current_track_index = 0
 
+    def _play_thread(self, track):
+        try:
+            data, samplerate = sf.read(track, dtype='float32', always_2d=True)
+            scaled = data * self.volume
+            sd.play(scaled, samplerate, device=sd.default.device['output'])
+            while sd.get_stream().active:
+                if not self.playing:
+                    sd.stop()
+                    return
+                sd.sleep(100)
+        except Exception as e:
+            print(f"Error playing {track}: {e}")
+        finally:
+            self.playing = False
+
     # TODO: volume handling while playing
     def play_playlist(self):
-        if not self.playlist: 
+        if not self.playlist:
             return
-        
+
         self.stop()
+        self.playing = True
         track = self.playlist[self.current_track_index]
-        
-        def play_thread():
-            try:
-                data, samplerate = sf.read(track)
-                self.playing = True
-                self._play_audio(data * self.volume, samplerate)
-                sd.wait()
-                self.playing = False
-            except Exception as e:
-                raise RuntimeError(f"Error playing {track}: {e}")
-                self.playing = False
-        
-        thread = threading.Thread(target=play_thread, daemon=True)
+
+        thread = threading.Thread(target=self._play_thread, args=(track,), daemon=True)
         thread.start()
 
     def stop(self):
-        sd.stop()
         self.playing = False
         self.paused = False
+        sd.stop()
+        self.current_stream = None
 
     def next_track(self):
         if self.playlist:
