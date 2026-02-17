@@ -20,3 +20,4 @@ class AppState:
     bookshelf_render: AsciiArtAsset | None = None
     pomodoro_status: PomodoroStatus | None = None
     steam_state: int = 0
+    music_playing: str | None = None

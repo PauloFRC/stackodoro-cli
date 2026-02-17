@@ -64,6 +64,15 @@ def display_view(state: AppState) -> list:
     else:
         final_canvas = base_canvas
 
+    # add music playing info at the bottom
+    if state.music_playing:
+        music_str = f"Playing {state.music_playing.split('/')[-1]}"
+        music_playing_asset = AsciiArtAsset(
+            lines=["", music_str],
+            colors=["", ['music_color'] * len(music_str)]
+        )
+        final_canvas.extend(music_playing_asset)
+
     return render_urwid_markup(final_canvas)
 
 

@@ -10,6 +10,7 @@ palette = [
     ('steam_color', 'white,bold', ''),
     ('timer_color', 'white,bold', ''),
     ('sign_color', 'brown', ''),
+    ('music_color', 'light cyan', ''),
 
     ('shelf_color', 'light gray', ''),
     ('book_color_1', 'dark blue', ''),

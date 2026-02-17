@@ -25,7 +25,8 @@ class AudioMixer:
             except Exception as e:
                 raise FileNotFoundError(f"Error: Could not load {filename}: {e}")
 
-        self.dir = None
+        self.dir: str | None = None
+        self.music_playing: str | None = None
         self.playlist = []
         self.current_track_index = 0
         self.playing = False
@@ -111,11 +112,13 @@ class AudioMixer:
         self.stop()
         self.playing = True
         track = self.playlist[self.current_track_index]
+        self.music_playing = track
 
         thread = threading.Thread(target=self._play_thread, args=(track,), daemon=True)
         thread.start()
 
     def stop(self):
+        self.music_playing = None
         self.playing = False
         self.paused = False
         if self.current_stream is not None:

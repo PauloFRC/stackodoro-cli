@@ -356,6 +356,8 @@ class App:
         if self.state.n_shelfs_completed > prev_n_shelfs_completed:
             self._play_shelf_completed = True
 
+        self.state.music_playing = self.mixer.music_playing if self.mixer else None
+
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
             self._handle_transition_sound()
