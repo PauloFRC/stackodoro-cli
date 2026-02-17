@@ -30,6 +30,7 @@ class AudioMixer:
         self.current_track_index = 0
         self.playing = False
         self.paused = False
+        self.quitting = False
         self.current_stream = None
 
     def play_session_complete(self):
@@ -59,6 +60,7 @@ class AudioMixer:
             self.current_track_index = 0
 
     def _play_thread(self, track):
+        music_done = False
         try:
             data, samplerate = sf.read(track, dtype='float32', always_2d=True)
             position = [0]
@@ -66,12 +68,14 @@ class AudioMixer:
                 start = position[0]
                 end = start + frames
                 chunk = data[start:end]
+
                 if len(chunk) < frames:
                     outdata[:len(chunk)] = chunk * self.volume
                     outdata[len(chunk):] = 0
                     raise sd.CallbackStop()
                 else:
                     outdata[:] = chunk * self.volume
+
                 position[0] = end
 
             with sd.OutputStream(
@@ -83,17 +87,22 @@ class AudioMixer:
             ) as stream:
                 
                 self.current_stream = stream
-                while stream.active:
-                    if not self.playing:
-                        stream.abort()
-                        return
+                while stream.active and self.playing:
                     sd.sleep(100)
+                if not self.playing:
+                    stream.abort()
+                    return
+                music_done = True
 
         except Exception as e:
-            raise RuntimeError(f"Error playing {track}: {e}")
+            if not self.quitting:
+                raise RuntimeError(f"Error playing {track}: {e}")
         finally:
             self.playing = False
             self.current_stream = None
+        
+        if music_done:
+           self.next_track()
 
     def play_playlist(self):
         if not self.playlist:
@@ -115,9 +124,17 @@ class AudioMixer:
         sd.stop()
 
     def next_track(self):
-        if self.playlist:
-            self.current_track_index = (self.current_track_index + 1) % len(self.playlist)
-            self.play_playlist()
+        if not self.playlist:
+            return
+
+        # check if reached the end of the list
+        if self.current_track_index >= len(self.playlist) - 1:
+            random.shuffle(self.playlist)
+            self.current_track_index = 0
+        else:
+            self.current_track_index += 1
+
+        self.play_playlist()
 
     def previous_track(self):
         if self.playlist:
@@ -128,4 +145,5 @@ class AudioMixer:
         return self.playing
 
     def quit(self):
+        self.quitting = True
         self.stop()
