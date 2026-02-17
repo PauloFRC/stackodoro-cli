@@ -7,6 +7,7 @@ import time
 class AudioMixer:
     SOUND_FILES = {
         'session_complete': 'session_complete.mp3',
+        'shelf_complete': 'shelf_complete.mp3'
     }
 
     def __init__(self):
@@ -27,6 +28,10 @@ class AudioMixer:
 
     def play_session_complete(self):
         stream = miniaudio.stream_file(self.sound_effects['session_complete'])
+        self.device.start(stream)
+    
+    def play_shelf_complete(self):
+        stream = miniaudio.stream_file(self.sound_effects['shelf_complete'])
         self.device.start(stream)
 
     def load_playlist(self, directory_path):

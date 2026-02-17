@@ -2,6 +2,7 @@ import urwid
 import json
 import os
 from pathlib import Path
+from itertools import dropwhile
 
 from .menus import LeftMenu, RightMenu, CustomTimerDialog
 from .theme import palette
@@ -57,6 +58,7 @@ class App:
         self.menus_visible = True
         self.active_dialog: CustomTimerDialog | None = None
         self._transition_sound_played = False
+        self._play_shelf_completed = False
 
         # for now, plays session complete effect on init
         self.mixer.play_session_complete()
@@ -91,7 +93,8 @@ class App:
             'n_shelfs_completed': self.bookshelf.n_shelfs_completed,
             'books': [
                 {
-                    'ascii': book.ascii,
+                    # drops starting empty lines so height is correctly calculated when reloadings
+                    'ascii': list(dropwhile(lambda line: not line.strip(), book.ascii)),
                     'color': book.color
                 }
                 for book in self.bookshelf.get_books()
@@ -226,21 +229,31 @@ class App:
             if self.steam_tick_counter >= self.steam_update_threshold:
                 self.state.steam_state = (self.state.steam_state + 1) % 4
                 self.steam_tick_counter = 0
+
+    def _handle_transition_sound(self):
+        is_transitioning = self.state.pomodoro_status.is_transition_pending
+        
+        if is_transitioning and not self._transition_sound_played:
+            if self._play_shelf_completed:
+                self.mixer.play_shelf_complete()
+                self._play_shelf_completed = False
+            else:
+                self.mixer.play_session_complete()
+            self._transition_sound_played = True
+        elif not is_transitioning:
+            self._transition_sound_played = False
     
     def update_display(self, loop, user_data=None):
         self.state.bookshelf_render = self.bookshelf.render()
+
+        prev_n_shelfs_completed = self.state.n_shelfs_completed
         self.state.n_shelfs_completed = self.bookshelf.get_n_shelfs_completed()
+        if self.state.n_shelfs_completed > prev_n_shelfs_completed:
+            self._play_shelf_completed = True
 
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
-            
-            # play session complete sound effect
-            if self.state.pomodoro_status.is_transition_pending:
-                if not self._transition_sound_played:
-                    self.mixer.play_session_complete()
-                    self._transition_sound_played = True
-            else:
-                self._transition_sound_played = False
+            self._handle_transition_sound()
 
         self.update_animations()
 
