@@ -29,13 +29,13 @@ class LeftMenu(urwid.WidgetWrap):
 # other controls
 class RightMenu(urwid.WidgetWrap):
     def __init__(self, on_set_playlist, on_music):
-        btn_set_playlist = MinimalButton("Set Playlist Dir", on_press=lambda _: on_set_playlist())
+        self.btn_set_playlist = MinimalButton("Set Playlist Dir", on_press=lambda _: on_set_playlist())
         self.btn_play_pause = MinimalButton("Play Music", on_press=lambda _: on_music())
         
         pile = urwid.Pile([
             urwid.Text("Controls", align='center'),
             urwid.Divider(),
-            btn_set_playlist,
+            self.btn_set_playlist,
             self.btn_play_pause,
         ])
         
@@ -84,10 +84,10 @@ class CustomTimerDialog(urwid.WidgetWrap):
             pass # ignore
 
 class PlaylistPickerDialog(urwid.WidgetWrap):
-    def __init__(self, on_apply, on_cancel):
+    def __init__(self, on_apply, on_cancel, initial_dir=""):
         self.on_apply_callback = on_apply
         
-        self.playlist_dir = urwid.Edit("Dir: ", "")
+        self.playlist_dir = urwid.Edit("Dir: ", initial_dir)
         
         apply_btn = MinimalButton("Apply", on_press=self.try_submit)
         cancel_btn = MinimalButton("Cancel", on_press=lambda _: on_cancel())

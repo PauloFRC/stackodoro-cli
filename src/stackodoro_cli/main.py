@@ -22,8 +22,6 @@ class App:
         # services
         self.bookshelf = Bookshelf()
         self.mixer = AudioMixer(self.volume)
-        self._init_storage()
-        self._load_data()
         self.pomodoro = None
         
         # ASCII art display
@@ -55,6 +53,10 @@ class App:
             palette=palette,
             unhandled_input=self.handle_input
         )
+
+        # load persistent data
+        self._init_storage()
+        self._load_data()
 
         self._hide_alarm = None
         self._hide_volume_alarm = False
@@ -194,7 +196,8 @@ class App:
         
         self.active_playlist_dialog = PlaylistPickerDialog(
             on_apply=self.set_playlist_directory,
-            on_cancel=self.close_playlist_picker_dialog
+            on_cancel=self.close_playlist_picker_dialog,
+            initial_dir=self.mixer.dir if self.mixer else ""
         )
 
         overlay = urwid.Overlay(
