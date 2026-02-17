@@ -77,3 +77,23 @@ class CustomTimerDialog(urwid.WidgetWrap):
             self.on_start_callback(work, break_time, big_break)
         except ValueError:
             pass # ignore
+
+class VolumeDisplay(urwid.WidgetWrap):
+    def __init__(self, initial_volume=1.0):
+        self.text_widget = urwid.Text("", align='center')
+        self.update_volume(initial_volume)
+        
+        filler = urwid.Filler(self.text_widget, 'middle')
+        super().__init__(filler)
+        
+    def update_volume(self, volume: float):
+        bars = int(round(volume * 10))
+        lines = [" Vol "]
+        for i in range(10, 0, -1):
+            if i <= bars:
+                lines.append(" ███ ")
+            else:
+                lines.append(" ░░░ ")
+        lines.append(f"{int(volume*100)}%".center(5))
+        
+        self.text_widget.set_text("\n".join(lines))

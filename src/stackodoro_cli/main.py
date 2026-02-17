@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from itertools import dropwhile
 
-from .menus import LeftMenu, RightMenu, CustomTimerDialog
+from .menus import LeftMenu, RightMenu, CustomTimerDialog, VolumeDisplay
 from .theme import palette
 from .models import AppState
 from .pomodoro import Pomodoro, SessionType
@@ -17,12 +17,14 @@ class App:
     def __init__(self):
         self.state = AppState()
 
+        self.volume = 1.0
+
         # services
         self.bookshelf = Bookshelf()
         self._init_storage()
         self._load_data()
         self.pomodoro = None
-        self.mixer = AudioMixer()
+        self.mixer = AudioMixer(self.volume)
         
         # ASCII art display
         self.display_text = urwid.Text("", align='center', wrap='clip')
@@ -37,6 +39,7 @@ class App:
         self.right_menu = RightMenu(
             on_music=self.toggle_music
         )
+        self.volume_display = VolumeDisplay(self.volume)
         
         self.empty_side = urwid.Filler(urwid.Text(""), 'middle')
         self.columns = urwid.Columns([
@@ -53,6 +56,7 @@ class App:
         )
 
         self._hide_alarm = None
+        self._hide_volume_alarm = False
         self.steam_tick_counter = 0
         self.steam_update_threshold = 12
         self.menus_visible = True
@@ -107,22 +111,40 @@ class App:
         self.hide_menus()
         self._hide_alarm = None
     
+    def _auto_hide_volume(self, loop, user_data):
+        self.hide_volume()
+        self._hide_volume_alarm = None
+    
     # autohide menu after 5 seconds
     def _schedule_autohide(self):
         if self._hide_alarm:
             self.loop.remove_alarm(self._hide_alarm)
         self._hide_alarm = self.loop.set_alarm_in(5, self._auto_hide_menus)
     
+    # autohide volume menu after 2 seconds
+    def _schedule_autohide_volume(self):
+        if self._hide_volume_alarm:
+            self.loop.remove_alarm(self._hide_volume_alarm)
+        self._hide_volume_alarm = self.loop.set_alarm_in(2, self._auto_hide_volume)
+    
     def hide_menus(self):
         self.menus_visible = False
         self.columns.contents[0] = (self.empty_side, self.columns.options('weight', 1))
-        self.columns.contents[2] = (self.empty_side, self.columns.options('weight', 1))
+        if not self._hide_volume_alarm:
+            self.columns.contents[2] = (self.empty_side, self.columns.options('weight', 1))
+    
+    def hide_volume(self):
+        if self.menus_visible:
+            self.columns.contents[2] = (self.right_menu, self.columns.options('weight', 1))
+        else:  
+            self.columns.contents[2] = (self.empty_side, self.columns.options('weight', 1))
     
     def show_menus(self):
         self.menus_visible = True
         self.columns.contents[0] = (self.left_menu, self.columns.options('weight', 1))
-        self.columns.contents[2] = (self.right_menu, self.columns.options('weight', 1))
-    
+        if not self._hide_volume_alarm:
+            self.columns.contents[2] = (self.right_menu, self.columns.options('weight', 1))
+
     # start session
     def start_preset(self, work_minutes, break_minutes, big_break_minutes):
         if self.pomodoro:
@@ -165,6 +187,17 @@ class App:
     def close_custom_dialog(self):
         self.active_dialog = None
         self.loop.widget = self.main_widget
+
+    def adjust_volume(self, delta):
+        self._volume_show = True
+        self.volume = max(0.0, min(1.0, self.volume + delta))   
+
+        if hasattr(self.mixer, 'set_volume'):
+            self.mixer.set_volume(self.volume)
+        
+        self.volume_display.update_volume(self.volume)
+        
+        self.columns.contents[2] = (self.volume_display, self.columns.options('weight', 1))
     
     def toggle_pause(self):
         if not self.pomodoro:
@@ -206,6 +239,15 @@ class App:
                 self.close_custom_dialog()
             elif key == 'enter':
                 self.active_dialog.try_submit()
+            return
+        
+        if key in ('+', '='):
+            self.adjust_volume(0.1)
+            self._schedule_autohide_volume()
+            return
+        elif key in ('-', '_'):
+            self.adjust_volume(-0.1)
+            self._schedule_autohide_volume()
             return
         
         if key in ('q', 'Q'):
