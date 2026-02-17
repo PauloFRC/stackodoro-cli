@@ -61,19 +61,40 @@ class AudioMixer:
     def _play_thread(self, track):
         try:
             data, samplerate = sf.read(track, dtype='float32', always_2d=True)
-            scaled = data * self.volume
-            sd.play(scaled, samplerate, device=sd.default.device['output'])
-            while sd.get_stream().active:
-                if not self.playing:
-                    sd.stop()
-                    return
-                sd.sleep(100)
+            position = [0]
+            def callback(outdata, frames, time, status):
+                start = position[0]
+                end = start + frames
+                chunk = data[start:end]
+                if len(chunk) < frames:
+                    outdata[:len(chunk)] = chunk * self.volume
+                    outdata[len(chunk):] = 0
+                    raise sd.CallbackStop()
+                else:
+                    outdata[:] = chunk * self.volume
+                position[0] = end
+
+            with sd.OutputStream(
+                samplerate=samplerate,
+                channels=data.shape[1],
+                dtype='float32',
+                callback=callback,
+                latency='high'
+            ) as stream:
+                
+                self.current_stream = stream
+                while stream.active:
+                    if not self.playing:
+                        stream.abort()
+                        return
+                    sd.sleep(100)
+
         except Exception as e:
-            print(f"Error playing {track}: {e}")
+            raise RuntimeError(f"Error playing {track}: {e}")
         finally:
             self.playing = False
+            self.current_stream = None
 
-    # TODO: volume handling while playing
     def play_playlist(self):
         if not self.playlist:
             return
@@ -88,8 +109,10 @@ class AudioMixer:
     def stop(self):
         self.playing = False
         self.paused = False
+        if self.current_stream is not None:
+            self.current_stream.abort()
+            self.current_stream = None
         sd.stop()
-        self.current_stream = None
 
     def next_track(self):
         if self.playlist:
