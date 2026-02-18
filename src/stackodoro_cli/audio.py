@@ -5,6 +5,25 @@ import random
 from pathlib import Path
 from importlib import resources
 import threading
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Stopped:
+    pass
+
+@dataclass(frozen=True)
+class Paused:
+    track: str
+
+@dataclass(frozen=True)
+class Playing:
+    track: str
+
+@dataclass(frozen=True)
+class Quitting:
+    pass
+
+AudioState = Stopped | Paused | Playing | Quitting
 
 class AudioMixer:
     SOUND_FILES = {
@@ -26,12 +45,10 @@ class AudioMixer:
                 raise FileNotFoundError(f"Error: Could not load {filename}: {e}")
 
         self.dir: str | None = None
-        self.music_playing: str | None = None
         self.playlist = []
         self.current_track_index = 0
-        self.playing = False
-        self.paused = False
-        self.quitting = False
+
+        self.state: AudioState = Stopped()
         self.current_stream = None
 
     def play_session_complete(self):
@@ -88,18 +105,18 @@ class AudioMixer:
             ) as stream:
                 
                 self.current_stream = stream
-                while stream.active and self.playing:
+                while stream.active and isinstance(self.state, Playing):
                     sd.sleep(100)
-                if not self.playing:
+                if not isinstance(self.state, Playing):
                     stream.abort()
                     return
+                
                 music_done = True
 
         except Exception as e:
-            if not self.quitting:
+            if not isinstance(self.state, Quitting):
                 raise RuntimeError(f"Error playing {track}: {e}")
         finally:
-            self.playing = False
             self.current_stream = None
         
         if music_done:
@@ -110,20 +127,28 @@ class AudioMixer:
             return
 
         self.stop()
-        self.playing = True
         track = self.playlist[self.current_track_index]
-        self.music_playing = track
+        self.state = Playing(track)
 
         thread = threading.Thread(target=self._play_thread, args=(track,), daemon=True)
         thread.start()
 
-    def stop(self):
-        self.music_playing = None
-        self.playing = False
-        self.paused = False
+    def _abort_current_stream(self):
         if self.current_stream is not None:
             self.current_stream.abort()
             self.current_stream = None
+
+    def pause(self):
+        if isinstance(self.state, Playing):
+            track = self.state.track
+            self.state = Paused(track)
+            
+            self._abort_current_stream()
+            sd.stop()
+
+    def stop(self):
+        self.state = Stopped()
+        self._abort_current_stream()
         sd.stop()
 
     def next_track(self):
@@ -148,5 +173,6 @@ class AudioMixer:
         return self.playing
 
     def quit(self):
-        self.quitting = True
-        self.stop()
+        self.state = Quitting()
+        self._abort_current_stream()
+        sd.stop()

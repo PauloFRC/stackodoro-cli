@@ -11,7 +11,7 @@ from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
 from .book import Book
 from .presenter import display_view
-from .audio import AudioMixer
+from .audio import AudioMixer, Paused, Playing, Quitting
 
 class App:
     def __init__(self):
@@ -251,10 +251,15 @@ class App:
             self.pomodoro.pause()
 
     def handle_transition(self):
-        pomodoro_state = self.pomodoro.get_status()
+        pomodoro_status = self.pomodoro.get_status()
+        mixer_state = self.mixer.state
+
+        # resume music if it was paused and we are in work session
+        if isinstance(mixer_state, Paused) and pomodoro_status.session_type == SessionType.WORK:
+            self.mixer.play_playlist()
         
         # if we are no longer in WORK (meaning work finished), add a book
-        if pomodoro_state.session_type != SessionType.WORK:
+        if pomodoro_status.session_type != SessionType.WORK:
             self.bookshelf.add_book()
             self.save_data()
             
@@ -264,13 +269,13 @@ class App:
         if not self.mixer:
             return
         
-        if self.mixer.playing:
+        if isinstance(self.mixer.state, Playing):
             self.mixer.stop()
         else:
             self.mixer.play_playlist()
         # update button label to reflect new state
         try:
-            self.right_menu.set_play_pause_label(self.mixer.playing)
+            self.right_menu.set_play_pause_label(isinstance(self.mixer.state, Playing))
         except Exception:
             pass
     
@@ -288,8 +293,7 @@ class App:
         self.save_data()
         if self.pomodoro:
             self.pomodoro.stop()
-        if self.mixer:
-            self.mixer.quit()
+        self.mixer.quit()
         raise urwid.ExitMainLoop()
     
     def handle_input(self, key):
@@ -340,13 +344,20 @@ class App:
 
     def _handle_transition_sound(self):
         is_transitioning = self.state.pomodoro_status.is_transition_pending
-        
+                
         if is_transitioning and not self._transition_sound_played:
+            ''' 
+            pause music and play transition sound
+            pause considers it will play again in work sessions, 
+            while stop requires user to manually start music again
+            '''
+            self.mixer.pause()
             if self._play_shelf_completed:
                 self.mixer.play_shelf_complete()
                 self._play_shelf_completed = False
             else:
                 self.mixer.play_session_complete()
+            
             self._transition_sound_played = True
         elif not is_transitioning:
             self._transition_sound_played = False
@@ -358,8 +369,6 @@ class App:
         self.state.n_shelfs_completed = self.bookshelf.get_n_shelfs_completed()
         if self.state.n_shelfs_completed > prev_n_shelfs_completed:
             self._play_shelf_completed = True
-
-        self.state.music_playing = self.mixer.music_playing if self.mixer else None
 
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
