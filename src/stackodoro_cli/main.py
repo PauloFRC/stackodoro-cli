@@ -1,22 +1,19 @@
 from .messages import get_pomodoro_session_message
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
-from .models import AppState
+from .models import AsciiState, AppSnapshot
 from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
 from .book import Book
 from .presenter import display_view
 from .audio import AudioMixer, Paused, Playing, Quitting
+from .storage import storage_service
 
 import urwid
-import json
-import os
-from pathlib import Path
-from itertools import dropwhile
 
 class App:
     def __init__(self):
-        self.state = AppState()
+        self.state = AsciiState()
 
         self.volume = 1.0
 
@@ -58,8 +55,7 @@ class App:
         )
 
         # load persistent data
-        self._init_storage()
-        self._load_data()
+        self.load_data()
 
         self._hide_alarm = None
         self._hide_volume_alarm = False
@@ -75,49 +71,26 @@ class App:
         self.mixer.play_session_complete()
         
         self.loop.set_alarm_in(0.1, self.update_display)
-    
-    def _init_storage(self):
-        data_home = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
-        self.storage_dir = Path(data_home) / 'stackodoro-cli'
-        self.storage_dir.mkdir(parents=True, exist_ok=True)
-        self.storage_file = self.storage_dir / 'bookshelf.json'
         
-    def _load_data(self):
-        books = []
-        n_completed = 0
-        
-        if self.storage_file.exists():
-            try:
-                with open(self.storage_file, 'r') as f:
-                    data = json.load(f)
-                    n_completed = data.get('n_shelfs_completed', 0)
-                    for b in data.get('books', []):
-                        books.append(Book(ascii=b['ascii'], color=b['color']))
-            except (json.JSONDecodeError, KeyError):
-                pass
+    def load_data(self):
+        snapshot = storage_service.load_state()
+
+        books = snapshot.books
+        n_completed = snapshot.n_shelfs_completed
+        playlist_dir = snapshot.playlist_dir
                 
         self.bookshelf.load_books(books, n_completed)
         self.state.n_shelfs_completed = n_completed
-        
-        playlist_dir = data.get('playlist_dir')
         if playlist_dir:
             self.mixer.load_playlist(playlist_dir)
         
     def save_data(self):
-        data = {
-            'playlist_dir': self.mixer.dir if self.mixer else None,
-            'n_shelfs_completed': self.bookshelf.n_shelfs_completed,
-            'books': [
-                {
-                    # drops starting empty lines so height is correctly calculated when reloadings
-                    'ascii': list(dropwhile(lambda line: not line.strip(), book.ascii)),
-                    'color': book.color
-                }
-                for book in self.bookshelf.get_books()
-            ]
-        }
-        with open(self.storage_file, 'w') as f:
-            json.dump(data, f, indent=2)
+        snapshot = AppSnapshot(
+            playlist_dir=self.mixer.dir if self.mixer else None,
+            n_shelfs_completed=self.bookshelf.n_shelfs_completed,
+            books=self.bookshelf.get_books()
+        )        
+        storage_service.save_state(snapshot)
     
     def _auto_hide_menus(self, loop, user_data):
         self.hide_menus()

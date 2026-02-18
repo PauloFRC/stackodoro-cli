@@ -1,7 +1,8 @@
 from enum import Enum
-from .pomodoro import PomodoroStatus
-
 from dataclasses import dataclass, field
+
+from .pomodoro import PomodoroStatus
+from .book import Book
 
 @dataclass
 class AsciiArtAsset:
@@ -16,9 +17,15 @@ class AsciiArtAsset:
         return len(self.lines)
 
 @dataclass
-class AppState:
+class AsciiState:
     n_shelfs_completed: int = 0
     bookshelf_render: AsciiArtAsset | None = None
     pomodoro_status: PomodoroStatus | None = None
     steam_state: int = 0
     music_playing: str | None = None
+
+@dataclass
+class AppSnapshot:
+    playlist_dir: str | None = None
+    n_shelfs_completed: int = 0
+    books: list[Book] = field(default_factory=list)

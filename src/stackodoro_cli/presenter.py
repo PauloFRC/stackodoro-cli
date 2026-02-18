@@ -1,4 +1,4 @@
-from .models import AppState, AsciiArtAsset
+from .models import AsciiState, AsciiArtAsset
 from .utils import format_time, merge_assets, render_urwid_markup, load_asset
 
 def spacer_asset(width: int=1, height: int=1) -> AsciiArtAsset:
@@ -8,7 +8,7 @@ def spacer_asset(width: int=1, height: int=1) -> AsciiArtAsset:
         colors=lines
     )
 
-def display_view(state: AppState) -> list:
+def display_view(state: AsciiState) -> list:
     pomodoro_status = state.pomodoro_status
     if pomodoro_status and pomodoro_status.is_paused:
         return display_pause()
@@ -103,7 +103,7 @@ def display_view(state: AppState) -> list:
     return render_urwid_markup(final_canvas)
 
 
-def overlay_transition_modal(canvas: AsciiArtAsset, state: AppState) -> None:
+def overlay_transition_modal(canvas: AsciiArtAsset, state: AsciiState) -> None:
     pomodoro_state = state.pomodoro_status
     if not pomodoro_state:
         return
