@@ -1,5 +1,13 @@
 from .models import AsciiArtAsset
 
+from importlib import resources
+
+def load_asset(filename: str, color_key: str) -> AsciiArtAsset:
+    with resources.files('stackodoro_cli').joinpath(filename).open('r') as f:
+        lines = [line.rstrip('\n') for line in f]
+    colors = [[color_key] * len(line) for line in lines]
+    return AsciiArtAsset(lines=lines, colors=colors)
+
 def pad_colors(color_list, length):
             color_list.extend([None] * max(0, length - len(color_list)))
 
@@ -16,7 +24,8 @@ def merge_assets(
           base: AsciiArtAsset, 
           overlay: AsciiArtAsset, 
           start_y: int = 0,
-          start_x: int = 0 
+          start_x: int = 0,
+          transparent: bool = False
     ) -> None:
     add_start_x(overlay, start_x)
 
@@ -55,10 +64,11 @@ def merge_assets(
         pad_colors(fg_colors_padded, max_len)
         
         merged_line = list(bg_line)
-        for x in range(start_index, end_index + 1):
-            merged_line[x] = fg_line[x]
-            if fg_colors_padded[x] is not None:
-                bg_colors[x] = fg_colors_padded[x]
+        if not transparent:
+            for x in range(start_index, end_index + 1):
+                merged_line[x] = fg_line[x]
+                if fg_colors_padded[x] is not None:
+                    bg_colors[x] = fg_colors_padded[x]
                 
         base.lines[current_y] = "".join(merged_line)
 

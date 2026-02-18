@@ -1,7 +1,5 @@
 from .models import AppState, AsciiArtAsset
-from .utils import format_time, merge_assets, render_urwid_markup
-
-from importlib import resources
+from .utils import format_time, merge_assets, render_urwid_markup, load_asset
 
 def display_view(state: AppState) -> list:
     pomodoro_status = state.pomodoro_status
@@ -13,6 +11,7 @@ def display_view(state: AppState) -> list:
         colors=[row[:] for row in state.bookshelf_render.colors]
     )
 
+    # build/load assets
     steam_variations = [
         ["    ( (   ",
          "     ) )  "],
@@ -29,19 +28,24 @@ def display_view(state: AppState) -> list:
         colors=[['steam_color'] * len(line) for line in steam_lines]
     )
 
-    with resources.files('stackodoro_cli').joinpath('res/table.txt').open('r') as f:
-        table_lines = [line.rstrip('\n') for line in f]
-    table_asset = AsciiArtAsset(
-        lines=table_lines,
-        colors=[['table_color'] * len(line) for line in table_lines]
-    )
+    table_asset = load_asset('res/table.txt', 'table_color')
+    clock_asset = load_asset('res/clock.txt', 'clock_color')
+    mug_asset = load_asset('res/mug.txt', 'mug_color')
+    notebook_asset = load_asset('res/notebook.txt', 'notebook_color')
 
-    OVERLAP = 6
+    # build table layout
+    OVERLAP = 3
     table_y = len(base_canvas) - OVERLAP
-    steam_y = table_y - len(steam_asset)
+    clock_y = table_y + 1
+    mug_y = table_y - 2
+    notebook_y = table_y + 1
+    steam_y = table_y - 4
 
     merge_assets(base_canvas, table_asset, table_y, 9)
-    merge_assets(base_canvas, steam_asset, steam_y, 25)
+    merge_assets(base_canvas, clock_asset, clock_y, 40)
+    merge_assets(base_canvas, mug_asset, mug_y, 27)
+    merge_assets(base_canvas, notebook_asset, notebook_y, 11)
+    merge_assets(base_canvas, steam_asset, steam_y, 26)
 
     time_text = format_time(state.pomodoro_status.time_remaining) if state.pomodoro_status else '00:00'
     timer_y = len(base_canvas) - 7
@@ -49,9 +53,9 @@ def display_view(state: AppState) -> list:
         lines=[time_text],
         colors=[['timer_color'] * len(time_text)]
     )
-    
     merge_assets(base_canvas, timer_asset, timer_y, 42)
 
+    # pad all lines to the same width
     max_width = max(len(line) for line in base_canvas.lines) if base_canvas.lines else 0
     base_canvas.lines = [line.ljust(max_width) for line in base_canvas.lines]
     for row in base_canvas.colors:
@@ -136,11 +140,17 @@ def display_pause() -> list:
 def completed_sign_asset(n_completed:int) -> AsciiArtAsset:
     n_completed_txt = f"{min(n_completed, 99):02d}"
 
-    with resources.files('stackodoro_cli').joinpath('res/sign.txt').open('r') as f:
-        sign_lines = [line.rstrip('\n') for line in f]
+    sign_asset = load_asset('res/sign.txt', 'sign_color')
+
+    line = sign_asset.lines[2]
+    start = line.index("$$")
+    end = start + len(n_completed_txt)
+
+    sign_asset.lines[2] = line.replace("$$", n_completed_txt)
+    sign_asset.colors[2] = [
+        'sign_text_color' if start <= i < end else 'sign_color'
+        for i in range(len(sign_asset.lines[2]))
+    ]
     
-    sign_lines[2] = sign_lines[2].replace("$$", n_completed_txt)
-    return AsciiArtAsset(
-        lines=sign_lines,
-        colors=[['sign_color'] * len(line) for line in sign_lines]
-    )
+    return sign_asset
+    

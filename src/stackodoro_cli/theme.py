@@ -5,15 +5,20 @@ palette = [
     ('minimal_button', 'light gray', ''),
     # focused button
      ('minimal_button_focus', 'black,bold', 'light gray'),
-
+    # object colors
     ('table_color', 'yellow', ''),
     ('steam_color', 'white,bold', ''),
+    ('mug_color', 'white,bold', ''),
+    ('clock_color', 'white', ''),
     ('timer_color', 'white,bold', ''),
+    ('notebook_color', 'light green', ''),
     ('sign_color', 'brown', ''),
+    ('sign_text_color', 'white,bold', ''),
+    ('shelf_color', 'light gray', ''),
+    # info colors
     ('music_color', 'light cyan', ''),
     ('session_color', 'light magenta,bold', ''),
-
-    ('shelf_color', 'light gray', ''),
+    # book colors
     ('book_color_1', 'dark blue', ''),
     ('book_color_2', 'dark green', ''),
     ('book_color_3', 'dark red', ''),
