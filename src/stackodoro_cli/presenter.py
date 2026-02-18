@@ -1,6 +1,13 @@
 from .models import AppState, AsciiArtAsset
 from .utils import format_time, merge_assets, render_urwid_markup, load_asset
 
+def spacer_asset(width: int=1, height: int=1) -> AsciiArtAsset:
+    lines = [" " * width for _ in range(height)]
+    return AsciiArtAsset(
+        lines=lines,
+        colors=lines
+    )
+
 def display_view(state: AppState) -> list:
     pomodoro_status = state.pomodoro_status
     if pomodoro_status and pomodoro_status.is_paused:
@@ -78,6 +85,9 @@ def display_view(state: AppState) -> list:
             colors=["", ['session_color'] * len(pomodoro_status.message)]
         )
         final_canvas.extend(session_asset)
+    else:
+        # add space to avoid flickering
+        final_canvas.extend(spacer_asset(height=2))
 
     # add music playing info at the bottom
     if state.music_playing:
@@ -87,6 +97,8 @@ def display_view(state: AppState) -> list:
             colors=["", ['music_color'] * len(music_str)]
         )
         final_canvas.extend(music_playing_asset)
+    else:
+        final_canvas.extend(spacer_asset(height=2))
 
     return render_urwid_markup(final_canvas)
 
