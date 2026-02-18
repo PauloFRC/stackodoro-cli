@@ -8,7 +8,6 @@ from .book import Book
 from .presenter import display_view
 from .audio import AudioMixer, Paused, Playing, Quitting
 
-
 import urwid
 import json
 import os

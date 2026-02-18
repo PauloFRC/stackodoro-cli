@@ -1,6 +1,5 @@
 from .models import AppState, AsciiArtAsset
 from .utils import format_time, merge_assets, render_urwid_markup
-from .pomodoro import SessionType
 
 from importlib import resources
 
@@ -15,10 +14,14 @@ def display_view(state: AppState) -> list:
     )
 
     steam_variations = [
-        [" " * 25 + "    ( (   ", " " * 25 + "     ) )  "],
-        [" " * 25 + "   ) )    ", " " * 25 + "    ( (   "],
-        [" " * 25 + "     ) )  ", " " * 25 + "    ( (   "],
-        [" " * 25 + "    ( )   ", " " * 25 + "    ) (   "]
+        ["    ( (   ",
+         "     ) )  "],
+        ["   ) )    ",
+         "    ( (   "],
+        ["     ) )  ",
+         "    ( (   "],
+        ["    ( )   ",
+         "    ) (   "]
     ]
     steam_lines = steam_variations[state.steam_state]
     steam_asset = AsciiArtAsset(
@@ -37,18 +40,17 @@ def display_view(state: AppState) -> list:
     table_y = len(base_canvas) - OVERLAP
     steam_y = table_y - len(steam_asset)
 
-    merge_assets(base_canvas, table_asset, table_y)
-    merge_assets(base_canvas, steam_asset, steam_y)
+    merge_assets(base_canvas, table_asset, table_y, 9)
+    merge_assets(base_canvas, steam_asset, steam_y, 25)
 
     time_text = format_time(state.pomodoro_status.time_remaining) if state.pomodoro_status else '00:00'
-    timer_str = " " * 42 + time_text
     timer_y = len(base_canvas) - 7
     timer_asset = AsciiArtAsset(
-        lines=[timer_str],
-        colors=[['timer_color'] * len(timer_str)]
+        lines=[time_text],
+        colors=[['timer_color'] * len(time_text)]
     )
     
-    merge_assets(base_canvas, timer_asset, timer_y)
+    merge_assets(base_canvas, timer_asset, timer_y, 42)
 
     max_width = max(len(line) for line in base_canvas.lines) if base_canvas.lines else 0
     base_canvas.lines = [line.ljust(max_width) for line in base_canvas.lines]
@@ -113,7 +115,7 @@ def overlay_transition_modal(canvas: AsciiArtAsset, state: AppState) -> None:
     canvas_height = len(canvas)
     modal_height = len(modal_lines)
     
-    start_y = max(0, (canvas_height - modal_height) // 2)    
+    start_y = max(0, (canvas_height - modal_height) // 2)
     
     for i, modal_line in enumerate(modal_lines):
         y = start_y + i

@@ -3,7 +3,23 @@ from .models import AsciiArtAsset
 def pad_colors(color_list, length):
             color_list.extend([None] * max(0, length - len(color_list)))
 
-def merge_assets(base: AsciiArtAsset, overlay: AsciiArtAsset, start_y: int) -> None:
+def add_start_x(asset: AsciiArtAsset, start_x: int) -> None:
+    for y in range(len(asset.lines)):
+        line = asset.lines[y]
+        color_row = asset.colors[y] if y < len(asset.colors) else []
+        
+        if start_x > 0:
+            asset.lines[y] = " " * start_x + line
+            asset.colors[y] = [None] * start_x + color_row
+
+def merge_assets(
+          base: AsciiArtAsset, 
+          overlay: AsciiArtAsset, 
+          start_y: int = 0,
+          start_x: int = 0 
+    ) -> None:
+    add_start_x(overlay, start_x)
+
     required_height = start_y + len(overlay.lines)
     
     if required_height > len(base.lines):
