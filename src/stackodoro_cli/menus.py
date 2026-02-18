@@ -39,6 +39,8 @@ class RightMenu(urwid.WidgetWrap):
             urwid.Divider(),
             self.btn_set_playlist,
             self.btn_play_pause,
+            urwid.Divider(),
+
             # slots for previous and next
             urwid.Divider(),
             urwid.Divider(),
@@ -54,11 +56,11 @@ class RightMenu(urwid.WidgetWrap):
 
         if is_playing:
             # restore buttons
-            self.pile.contents[4] = (self.btn_previous, self.pile.options())
-            self.pile.contents[5] = (self.btn_next, self.pile.options())
+            self.pile.contents[5] = (self.btn_previous, self.pile.options())
+            self.pile.contents[6] = (self.btn_next, self.pile.options())
         else:
-            self.pile.contents[4] = (urwid.Divider(), self.pile.options())
             self.pile.contents[5] = (urwid.Divider(), self.pile.options())
+            self.pile.contents[6] = (urwid.Divider(), self.pile.options())
 
 class CustomTimerDialog(urwid.WidgetWrap):
     def __init__(self, on_start, on_cancel):

@@ -16,10 +16,10 @@ def display_view(state: AppState) -> list:
     )
 
     steam_variations = [
-        [" " * 22 + "    ( (   ", " " * 22 + "     ) )  "],
-        [" " * 22 + "   ) )    ", " " * 22 + "    ( (   "],
-        [" " * 22 + "     ) )  ", " " * 22 + "    ( (   "],
-        [" " * 22 + "    ( )   ", " " * 22 + "    ) (   "]
+        [" " * 25 + "    ( (   ", " " * 25 + "     ) )  "],
+        [" " * 25 + "   ) )    ", " " * 25 + "    ( (   "],
+        [" " * 25 + "     ) )  ", " " * 25 + "    ( (   "],
+        [" " * 25 + "    ( )   ", " " * 25 + "    ) (   "]
     ]
     steam_lines = steam_variations[state.steam_state]
     steam_asset = AsciiArtAsset(
@@ -42,7 +42,7 @@ def display_view(state: AppState) -> list:
     merge_assets(base_canvas, steam_asset, steam_y)
 
     time_text = format_time(state.pomodoro_status.time_remaining) if state.pomodoro_status else '00:00'
-    timer_str = " " * 39 + time_text
+    timer_str = " " * 42 + time_text
     timer_y = len(base_canvas) - 7
     timer_asset = AsciiArtAsset(
         lines=[timer_str],
