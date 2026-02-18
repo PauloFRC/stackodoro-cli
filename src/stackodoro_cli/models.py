@@ -1,3 +1,4 @@
+from enum import Enum
 from .pomodoro import PomodoroStatus
 
 from dataclasses import dataclass, field

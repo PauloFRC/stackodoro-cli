@@ -11,6 +11,7 @@ palette = [
     ('timer_color', 'white,bold', ''),
     ('sign_color', 'brown', ''),
     ('music_color', 'light cyan', ''),
+    ('session_color', 'light magenta', ''),
 
     ('shelf_color', 'light gray', ''),
     ('book_color_1', 'dark blue', ''),

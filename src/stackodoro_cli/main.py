@@ -1,9 +1,4 @@
-import urwid
-import json
-import os
-from pathlib import Path
-from itertools import dropwhile
-
+from .messages import get_pomodoro_session_message
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
 from .models import AppState
@@ -12,6 +7,13 @@ from .bookshelf import Bookshelf
 from .book import Book
 from .presenter import display_view
 from .audio import AudioMixer, Paused, Playing, Quitting
+
+
+import urwid
+import json
+import os
+from pathlib import Path
+from itertools import dropwhile
 
 class App:
     def __init__(self):
@@ -363,6 +365,10 @@ class App:
             self._transition_sound_played = False
     
     def update_display(self, loop, user_data=None):
+        # mixer updates
+        self.state.music_playing = self.mixer.state.track if self.mixer and isinstance(self.mixer.state, Playing) else None
+
+        # bookshelf updates
         self.state.bookshelf_render = self.bookshelf.render()
 
         prev_n_shelfs_completed = self.state.n_shelfs_completed
@@ -370,10 +376,12 @@ class App:
         if self.state.n_shelfs_completed > prev_n_shelfs_completed:
             self._play_shelf_completed = True
 
+        # pomodoro updates
         if self.pomodoro:
             self.state.pomodoro_status = self.pomodoro.get_status()
             self._handle_transition_sound()
 
+        # animations updates
         self.update_animations()
 
         markup_content = display_view(self.state)

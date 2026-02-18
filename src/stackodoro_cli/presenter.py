@@ -1,11 +1,13 @@
 from .models import AppState, AsciiArtAsset
 from .utils import format_time, merge_assets, render_urwid_markup
+from .pomodoro import SessionType
 
 from importlib import resources
+import random
 
 def display_view(state: AppState) -> list:
-    pomodoro_state = state.pomodoro_status
-    if pomodoro_state and pomodoro_state.is_paused:
+    pomodoro_status = state.pomodoro_status
+    if pomodoro_status and pomodoro_status.is_paused:
         return display_pause()
 
     base_canvas = AsciiArtAsset(
@@ -54,7 +56,7 @@ def display_view(state: AppState) -> list:
     for row in base_canvas.colors:
         row.extend([None] * max(0, max_width - len(row)))
 
-    if pomodoro_state and pomodoro_state.is_transition_pending:
+    if pomodoro_status and pomodoro_status.is_transition_pending:
         overlay_transition_modal(base_canvas, state)
     
     # add top sign when at least one shelf was completed
@@ -63,6 +65,14 @@ def display_view(state: AppState) -> list:
         final_canvas.extend(base_canvas)
     else:
         final_canvas = base_canvas
+
+    # add pomodoro session type info at the bottom
+    if pomodoro_status:
+        session_asset = AsciiArtAsset(
+            lines=["", pomodoro_status.message],
+            colors=["", ['session_color'] * len(pomodoro_status.message)]
+        )
+        final_canvas.extend(session_asset)
 
     # add music playing info at the bottom
     if state.music_playing:
@@ -132,4 +142,12 @@ def completed_sign_asset(n_completed:int) -> AsciiArtAsset:
     return AsciiArtAsset(
         lines=sign_lines,
         colors=[['sign_color'] * len(line) for line in sign_lines]
+    )
+
+def session_type_info_asset(session_type: SessionType) -> AsciiArtAsset:
+
+
+    return AsciiArtAsset(
+        lines=[info_text],
+        colors=[['session_color'] * len(info_text)]
     )

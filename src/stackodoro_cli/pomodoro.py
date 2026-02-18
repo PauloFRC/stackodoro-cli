@@ -1,11 +1,8 @@
-from enum import Enum
 import time
 from dataclasses import dataclass
 
-class SessionType(Enum):
-    WORK = "work"
-    BREAK = "break"
-    BIG_BREAK = "big_break"
+from .messages import get_pomodoro_session_message
+from .enums import SessionType
 
 @dataclass
 class PomodoroStatus:
@@ -14,6 +11,7 @@ class PomodoroStatus:
     is_paused: bool = False
     is_running: bool = False
     is_transition_pending: bool = False
+    message: str = ""
 
 class Pomodoro:
     def __init__(self, work_period:int = 25, break_period:int = 5, big_break_period:int = 30, n_cycles:int = 3):
@@ -30,6 +28,7 @@ class Pomodoro:
         self._paused = False
         self._transition_pending = False
         self._last_decrement: float | None = None
+        self._message: str = get_pomodoro_session_message(self._session_type)
     
     def get_status(self):
         self._update_clock()
@@ -38,8 +37,12 @@ class Pomodoro:
             int(self._time_remaining),
             self._paused,
             self._running,
-            self._transition_pending
+            self._transition_pending,
+            self._message
         )
+    
+    def _update_message(self):
+        self._message = get_pomodoro_session_message(self._session_type)
     
     def _update_clock(self):
         if not self._running or self._paused or self._transition_pending:
@@ -56,10 +59,6 @@ class Pomodoro:
             self._time_remaining = 0
             self._prepare_transition()
     
-    def confirm_transition(self):
-        self._transition_pending = False
-        self._last_decrement = time.time()
-    
     def _prepare_transition(self):
         if self._session_type == SessionType.WORK:
             self._cycles_completed += 1
@@ -74,7 +73,13 @@ class Pomodoro:
             self._session_type = SessionType.WORK
             self._time_remaining = self.work_period * 60
         
+        self._message = get_pomodoro_session_message(self._session_type)
+        
         self._transition_pending = True
+
+    def confirm_transition(self):
+        self._transition_pending = False
+        self._last_decrement = time.time()
     
     def start(self):
         if not self._running:
