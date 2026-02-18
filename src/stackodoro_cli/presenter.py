@@ -3,7 +3,6 @@ from .utils import format_time, merge_assets, render_urwid_markup
 from .pomodoro import SessionType
 
 from importlib import resources
-import random
 
 def display_view(state: AppState) -> list:
     pomodoro_status = state.pomodoro_status
@@ -142,12 +141,4 @@ def completed_sign_asset(n_completed:int) -> AsciiArtAsset:
     return AsciiArtAsset(
         lines=sign_lines,
         colors=[['sign_color'] * len(line) for line in sign_lines]
-    )
-
-def session_type_info_asset(session_type: SessionType) -> AsciiArtAsset:
-
-
-    return AsciiArtAsset(
-        lines=[info_text],
-        colors=[['session_color'] * len(info_text)]
     )
