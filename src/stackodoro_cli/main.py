@@ -38,7 +38,9 @@ class App:
         )
         self.right_menu = RightMenu(
             on_set_playlist=self.show_playlist_picker_dialog,
-            on_music=self.toggle_music
+            on_music=self.toggle_music,
+            on_previous=self.mixer.previous_track,
+            on_next=self.mixer.skip_track
         )
         self.volume_display = VolumeDisplay(self.volume)
         

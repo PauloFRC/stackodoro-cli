@@ -51,6 +51,9 @@ class AudioMixer:
         self.state: AudioState = Stopped()
         self.current_stream = None
 
+        self._play_lock = threading.Lock()
+        self._current_thread: threading.Thread | None = None
+
     def play_session_complete(self):
         data, samplerate = self.sound_effects['session_complete']
         self._play_audio(data * self.volume, samplerate)
@@ -78,65 +81,72 @@ class AudioMixer:
             self.current_track_index = 0
 
     def _play_thread(self, track):
-        music_done = False
-        try:
-            data, samplerate = sf.read(track, dtype='float32', always_2d=True)
-            position = [0]
-            def callback(outdata, frames, time, status):
-                start = position[0]
-                end = start + frames
-                chunk = data[start:end]
+        with self._play_lock:
+            music_done = False
+            try:
+                data, samplerate = sf.read(track, dtype='float32', always_2d=True)
+                position = [0]
+                def callback(outdata, frames, time, status):
+                    start = position[0]
+                    end = start + frames
+                    chunk = data[start:end]
 
-                if len(chunk) < frames:
-                    outdata[:len(chunk)] = chunk * self.volume
-                    outdata[len(chunk):] = 0
-                    raise sd.CallbackStop()
-                else:
-                    outdata[:] = chunk * self.volume
+                    if len(chunk) < frames:
+                        outdata[:len(chunk)] = chunk * self.volume
+                        outdata[len(chunk):] = 0
+                        raise sd.CallbackStop()
+                    else:
+                        outdata[:] = chunk * self.volume
 
-                position[0] = end
+                    position[0] = end
 
-            with sd.OutputStream(
-                samplerate=samplerate,
-                channels=data.shape[1],
-                dtype='float32',
-                callback=callback,
-                latency='high'
-            ) as stream:
-                
-                self.current_stream = stream
-                while stream.active and isinstance(self.state, Playing):
-                    sd.sleep(100)
-                if not isinstance(self.state, Playing):
-                    stream.abort()
-                    return
-                
-                music_done = True
+                with sd.OutputStream(
+                    samplerate=samplerate,
+                    channels=data.shape[1],
+                    dtype='float32',
+                    callback=callback,
+                    latency='high'
+                ) as stream:
+                    
+                    self.current_stream = stream
+                    while stream.active and isinstance(self.state, Playing):
+                        sd.sleep(100)
+                    if not isinstance(self.state, Playing):
+                        stream.abort()
+                        return
+                    
+                    music_done = True
 
-        except Exception as e:
-            if not isinstance(self.state, Quitting):
-                raise RuntimeError(f"Error playing {track}: {e}")
-        finally:
-            self.current_stream = None
+            except Exception as e:
+                if not isinstance(self.state, Quitting):
+                    raise RuntimeError(f"Error playing {track}: {e}")
+            finally:
+                self.current_stream = None
         
-        if music_done:
-           self.next_track()
-
-    def play_playlist(self):
-        if not self.playlist:
-            return
-
-        self.stop()
-        track = self.playlist[self.current_track_index]
-        self.state = Playing(track)
-
-        thread = threading.Thread(target=self._play_thread, args=(track,), daemon=True)
-        thread.start()
+            if music_done:
+                self._next_track(from_play_thread=True)
 
     def _abort_current_stream(self):
         if self.current_stream is not None:
             self.current_stream.abort()
             self.current_stream = None
+
+    def play_playlist(self, from_play_thread=False):
+        if not self.playlist:
+            return
+
+        self._abort_current_stream()
+        sd.stop()
+
+        # if this was called from the play thread, we don't want to join it (would cause deadlock)
+        if not from_play_thread and self._current_thread and self._current_thread.is_alive():
+            self._current_thread.join(timeout=1.0)
+
+        track = self.playlist[self.current_track_index]
+        self.state = Playing(track)
+
+        self._current_thread = threading.Thread(target=self._play_thread, args=(track,), daemon=True)
+        self._current_thread.start()
 
     def pause(self):
         if isinstance(self.state, Playing):
@@ -151,7 +161,7 @@ class AudioMixer:
         self._abort_current_stream()
         sd.stop()
 
-    def next_track(self):
+    def _next_track(self, from_play_thread=False):
         if not self.playlist:
             return
 
@@ -162,15 +172,16 @@ class AudioMixer:
         else:
             self.current_track_index += 1
 
-        self.play_playlist()
+        self.play_playlist(from_play_thread=from_play_thread)
+    
+    def skip_track(self):
+        if self.playlist:
+            self._next_track(from_play_thread=False)
 
     def previous_track(self):
         if self.playlist:
             self.current_track_index = (self.current_track_index - 1) % len(self.playlist)
             self.play_playlist()
-
-    def is_playing(self):
-        return self.playing
 
     def quit(self):
         self.state = Quitting()

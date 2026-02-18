@@ -28,15 +28,19 @@ class LeftMenu(urwid.WidgetWrap):
 
 # other controls
 class RightMenu(urwid.WidgetWrap):
-    def __init__(self, on_set_playlist, on_music):
+    def __init__(self, on_set_playlist, on_music, on_previous, on_next):
         self.btn_set_playlist = MinimalButton("Set Playlist Dir", on_press=lambda _: on_set_playlist())
         self.btn_play_pause = MinimalButton("Play Music", on_press=lambda _: on_music())
-        
+        self.btn_previous = MinimalButton("Previous Track", on_press=lambda _: on_previous())
+        self.btn_next = MinimalButton("Next Track", on_press=lambda _: on_next())
+
         pile = urwid.Pile([
             urwid.Text("Controls", align='center'),
             urwid.Divider(),
             self.btn_set_playlist,
             self.btn_play_pause,
+            self.btn_previous,
+            self.btn_next,
         ])
         
         padded = urwid.Padding(pile, align='center', width=20)
