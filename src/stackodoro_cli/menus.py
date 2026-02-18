@@ -34,22 +34,31 @@ class RightMenu(urwid.WidgetWrap):
         self.btn_previous = MinimalButton("Previous Track", on_press=lambda _: on_previous())
         self.btn_next = MinimalButton("Next Track", on_press=lambda _: on_next())
 
-        pile = urwid.Pile([
+        self.pile = urwid.Pile([
             urwid.Text("Controls", align='center'),
             urwid.Divider(),
             self.btn_set_playlist,
             self.btn_play_pause,
-            self.btn_previous,
-            self.btn_next,
+            # slots for previous and next
+            urwid.Divider(),
+            urwid.Divider(),
         ])
         
-        padded = urwid.Padding(pile, align='center', width=20)
+        padded = urwid.Padding(self.pile, align='center', width=20)
         filler = urwid.Filler(padded, 'middle')
         super().__init__(filler)
 
     def set_play_pause_label(self, is_playing: bool):
         label = "Pause Music" if is_playing else "Play Music"
         self.btn_play_pause._label.set_text(label)
+
+        if is_playing:
+            # restore buttons
+            self.pile.contents[4] = (self.btn_previous, self.pile.options())
+            self.pile.contents[5] = (self.btn_next, self.pile.options())
+        else:
+            self.pile.contents[4] = (urwid.Divider(), self.pile.options())
+            self.pile.contents[5] = (urwid.Divider(), self.pile.options())
 
 class CustomTimerDialog(urwid.WidgetWrap):
     def __init__(self, on_start, on_cancel):
