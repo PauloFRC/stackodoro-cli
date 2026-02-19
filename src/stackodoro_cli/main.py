@@ -2,7 +2,7 @@ import urwid
 
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
-from .models import UIState, AppSnapshot, Action, UIElement, Tick, SetVisible, AdjustVolume, PlaySessionCompletedSound, PlayShelfCompletedSound, PlayPlaylist, StopPlaylist, PausePlaylist, ToggleMusic, PreviousTrack, NextTrack, TogglePause, StartTimer, SetPlaylistDir, Quit
+from .models import UIState, AppSnapshot, Action, UIElement, Tick, DisplayError, SetVisible, AdjustVolume, PlaySessionCompletedSound, PlayShelfCompletedSound, PlayPlaylist, StopPlaylist, PausePlaylist, ToggleMusic, PreviousTrack, NextTrack, TogglePause, StartTimer, SetPlaylistDir, Quit
 from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
 from .audio import AudioMixer, Paused, Playing
@@ -74,6 +74,9 @@ class App:
         match action:
             case Tick():
                 self.tick()
+            case DisplayError(error_msg=error_msg):
+                self.ui_state.menu.error_msg = error_msg
+                self.set_visibility(UIElement.ERROR_MSG, True)
             case SetVisible(element=element, visible=visible):
                 self.set_visibility(element, visible)
             case AdjustVolume(delta=delta):
@@ -156,6 +159,11 @@ class App:
                 self.ui_state.menu.show_custom_timer_dialog = visible
             case UIElement.PLAYLIST_PICKER_DIALOG:
                 self.ui_state.menu.show_playlist_picker_dialog = visible
+            case UIElement.ERROR_MSG:
+                if not visible:
+                    self.ui_state.menu.error_msg = None
+                else:
+                    self.schedule_autohide(UIElement.ERROR_MSG, 8)
 
     def schedule_autohide(self, element: UIElement, seconds: int):
         alarm_key = f'_hide_{element.name.lower()}_alarm'
@@ -167,7 +175,7 @@ class App:
             seconds, 
             lambda *_: self.set_visibility(element, False)
         )
-        setattr(self, alarm_key, alarm)
+        setattr(self, alarm_key, alarm)        
 
     # start session
     def start_preset(self, work_minutes, break_minutes, big_break_minutes):
@@ -191,9 +199,8 @@ class App:
     def play_playlist(self):
         try:
             self.mixer.play_playlist()
-        except RuntimeError as e:
-            # TODO: show error in UI instead of just printing
-            raise RuntimeError(f"Error playing playlist: {e}")
+        except Exception as e:
+            self.handle(DisplayError(e))
     
     def quit_app(self):
         self.save_data()
@@ -245,8 +252,8 @@ class App:
         # update button label to reflect new state
         try:
             self.right_menu.set_play_pause_label(isinstance(self.mixer.state, Playing))
-        except Exception:
-            pass
+        except Exception as e:
+            self.handle(DisplayError(e))
     
     def handle_input(self, key):
         if self.ui_state.menu.show_custom_timer_dialog:

@@ -133,7 +133,7 @@ class AudioMixer:
 
     def play_playlist(self, from_play_thread=False):
         if not self.playlist:
-            return
+            raise RuntimeError("Playlist not loaded")
 
         self._abort_current_stream()
         sd.stop()

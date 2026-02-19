@@ -18,6 +18,7 @@ palette = [
     # info colors
     ('music_color', 'light cyan', ''),
     ('session_color', 'light magenta,bold', ''),
+    ('error_color', 'light red,bold', ''),
     # book colors
     ('book_color_1', 'dark blue', ''),
     ('book_color_2', 'dark green', ''),

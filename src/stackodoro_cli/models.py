@@ -32,7 +32,8 @@ class MenuState:
     show_custom_timer_dialog: bool = False
     show_playlist_picker_dialog: bool = False
     current_playlist_dir: str = ""
-
+    error_msg: str | None = None
+    
 @dataclass
 class UIState:
     ascii: AsciiState = field(default_factory=AsciiState)
@@ -44,6 +45,7 @@ class UIElement(Enum):
     VOLUME = auto()
     CUSTOM_TIMER_DIALOG = auto()
     PLAYLIST_PICKER_DIALOG = auto()
+    ERROR_MSG = auto()
 
 @dataclass(frozen=True)
 class SetVisible:
@@ -95,9 +97,13 @@ class SetPlaylistDir:
     directory: str
 
 @dataclass(frozen=True)
+class DisplayError:
+    error_msg: str
+
+@dataclass(frozen=True)
 class Quit: pass
 
-Action = Tick | SetVisible | AdjustVolume | ToggleMusic | PreviousTrack | NextTrack | TogglePause | StartTimer | PlayPlaylist | StopPlaylist | PausePlaylist | SetPlaylistDir | Quit | PlaySessionCompletedSound | PlayShelfCompletedSound
+Action = Tick | DisplayError | SetVisible | AdjustVolume | ToggleMusic | PreviousTrack | NextTrack | TogglePause | StartTimer | PlayPlaylist | StopPlaylist | PausePlaylist | SetPlaylistDir | Quit | PlaySessionCompletedSound | PlayShelfCompletedSound
 
 @dataclass
 class AppSnapshot:

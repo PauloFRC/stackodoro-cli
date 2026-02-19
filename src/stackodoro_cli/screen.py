@@ -1,6 +1,6 @@
 import urwid
 
-from .models import UIState, Action
+from .models import MenuState, Action
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .presenter import display_view
 
@@ -32,28 +32,43 @@ class MainScreen(urwid.WidgetWrap):
             ('weight', 1, self.right_menu),
         ])
 
-        self.root = urwid.WidgetPlaceholder(self.columns)
-        super().__init__(self.root)
+        self.error_text = urwid.Text("", align='center')
+        self.error_bar = urwid.AttrMap(self.error_text, 'error_color') 
+        
+        self.body = urwid.WidgetPlaceholder(self.columns)
+        
+        self.frame = urwid.Frame(body=self.body, footer=self.error_bar)
 
-    def update(self, state: UIState):
-        self.display_text.set_text(display_view(state.ascii))
+        super().__init__(self.frame)
 
-        self._build_columns(state)
+    def update(self, state: MenuState):
+        menu_state = state.menu
+        ascii_state = state.ascii
 
-        self._build_dialog(state)
+        self.display_text.set_text(display_view(ascii_state))
+
+        self._build_columns(menu_state)
+
+        self._build_dialog(menu_state)
+
+        #show error
+        if menu_state.error_msg:
+            self.error_text.set_text(f"Error: {menu_state.error_msg}")
+        else:
+            self.error_text.set_text("")
     
-    def _build_columns(self, state: UIState):
+    def _build_columns(self, state: MenuState):
         # left menu
-        left_widget = self.left_menu if state.menu.show_menus else self.empty_side
+        left_widget = self.left_menu if state.show_menus else self.empty_side
         self.columns.contents[0] = (left_widget, self.columns.options('weight', 1))
         
         # volume update
-        self.volume_display.update_volume(state.menu.volume)
+        self.volume_display.update_volume(state.volume)
 
         # right menu
-        if state.menu.show_volume:
+        if state.show_volume:
             self.columns.contents[2] = (self.volume_display, self.columns.options('weight', 1))
-        elif state.menu.show_menus:
+        elif state.show_menus:
             self.columns.contents[2] = (self.right_menu, self.columns.options('weight', 1))
         else:
             self.columns.contents[2] = (self.empty_side, self.columns.options('weight', 1))
@@ -61,14 +76,14 @@ class MainScreen(urwid.WidgetWrap):
         # ascii view
         self.columns.contents[1] = (self.display_box, self.columns.options('weight', 3))
     
-    def _build_dialog(self, state: UIState):
-        if not state.menu.show_custom_timer_dialog and not state.menu.show_playlist_picker_dialog:
-            self.root.original_widget = self.columns
+    def _build_dialog(self, state: MenuState):
+        if not state.show_custom_timer_dialog and not state.show_playlist_picker_dialog:
+            self.body.original_widget = self.columns
             return
         
-        if state.menu.show_custom_timer_dialog:
+        if state.show_custom_timer_dialog:
             dialog = self.custom_timer_dialog
-        elif state.menu.show_playlist_picker_dialog:
+        elif state.show_playlist_picker_dialog:
             dialog = self.playlist_picker_dialog
         else:
             raise RuntimeError("Invalid state. This should not happen.")
@@ -81,5 +96,5 @@ class MainScreen(urwid.WidgetWrap):
                 valign="middle",
                 height=("relative", 40),
             )
-        self.root.original_widget = overlay
+        self.body.original_widget = overlay
             
