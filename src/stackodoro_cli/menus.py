@@ -1,14 +1,16 @@
 import urwid
+
 from .theme import MinimalButton
+from .models import StartTimer, SetPlaylistDir, ToggleMusic, PreviousTrack, NextTrack, TogglePause, Action, Quit, SetVisible, UIElement
 
 # pomodoro controls
 class LeftMenu(urwid.WidgetWrap):
-    def __init__(self, on_preset, on_custom, on_quit):
-        btn_25_5 = MinimalButton("25+5+20", on_press=lambda _: on_preset(25, 5, 20))
-        btn_35_10 = MinimalButton("35+10+20", on_press=lambda _: on_preset(35, 10, 20))
-        btn_40_20 = MinimalButton("40+20+30", on_press=lambda _: on_preset(40, 20, 30))
-        btn_custom = MinimalButton("Custom Timer", on_press=lambda _: on_custom())
-        btn_quit = MinimalButton("Quit", on_press=lambda _: on_quit())
+    def __init__(self, on_action):
+        btn_25_5 = MinimalButton("25+5+20", on_press=lambda _: on_action(StartTimer(work_minutes=25, break_minutes=5, big_break_minutes=20)))
+        btn_35_10 = MinimalButton("35+10+20", on_press=lambda _: on_action(StartTimer(work_minutes=35, break_minutes=10, big_break_minutes=20)))
+        btn_40_20 = MinimalButton("40+20+30", on_press=lambda _: on_action(StartTimer(work_minutes=40, break_minutes=20, big_break_minutes=30)))
+        btn_custom = MinimalButton("Custom Timer", on_press=lambda _: on_action(SetVisible(element=UIElement.CUSTOM_TIMER_DIALOG, visible=True)))
+        btn_quit = MinimalButton("Quit", on_press=lambda _: on_action(Quit()))
         
         pile = urwid.Pile([
             urwid.Text("Pomodoro", align='center'),
@@ -28,11 +30,11 @@ class LeftMenu(urwid.WidgetWrap):
 
 # other controls
 class RightMenu(urwid.WidgetWrap):
-    def __init__(self, on_set_playlist, on_music, on_previous, on_next):
-        self.btn_set_playlist = MinimalButton("Set Playlist Dir", on_press=lambda _: on_set_playlist())
-        self.btn_play_pause = MinimalButton("Play Music", on_press=lambda _: on_music())
-        self.btn_previous = MinimalButton("Previous Track", on_press=lambda _: on_previous())
-        self.btn_next = MinimalButton("Next Track", on_press=lambda _: on_next())
+    def __init__(self, on_action):
+        self.btn_set_playlist = MinimalButton("Set Playlist Dir", on_press=lambda _: on_action(SetVisible(UIElement.PLAYLIST_PICKER_DIALOG, True)))
+        self.btn_play_pause = MinimalButton("Play Music", on_press=lambda _: on_action(ToggleMusic()))
+        self.btn_previous = MinimalButton("Previous Track", on_press=lambda _: on_action(PreviousTrack()))
+        self.btn_next = MinimalButton("Next Track", on_press=lambda _: on_action(NextTrack()))
 
         self.pile = urwid.Pile([
             urwid.Text("Controls", align='center'),
@@ -63,15 +65,15 @@ class RightMenu(urwid.WidgetWrap):
             self.pile.contents[6] = (urwid.Divider(), self.pile.options())
 
 class CustomTimerDialog(urwid.WidgetWrap):
-    def __init__(self, on_start, on_cancel):
-        self.on_start_callback = on_start
+    def __init__(self, on_action):
+        self.on_action_callback = on_action
         
         self.work_edit = urwid.Edit("Work (min): ", "25")
         self.break_edit = urwid.Edit("Break (min): ", "5")
         self.big_break_edit = urwid.Edit("Big Break (min): ", "20")
         
         start_btn = MinimalButton("Start", on_press=self.try_submit)
-        cancel_btn = MinimalButton("Cancel", on_press=lambda _: on_cancel())
+        cancel_btn = MinimalButton("Cancel", on_press=lambda _: self.on_action_callback(SetVisible(element=UIElement.CUSTOM_TIMER_DIALOG, visible=False)))
         
         dialog_pile = urwid.Pile([
             urwid.Text("Custom Timer", align='center'),
@@ -94,18 +96,18 @@ class CustomTimerDialog(urwid.WidgetWrap):
             work = int(self.work_edit.get_edit_text())
             break_time = int(self.break_edit.get_edit_text())
             big_break = int(self.big_break_edit.get_edit_text())
-            self.on_start_callback(work, break_time, big_break)
+            self.on_action_callback(StartTimer(work, break_time, big_break))
         except ValueError:
             pass # ignore
 
 class PlaylistPickerDialog(urwid.WidgetWrap):
-    def __init__(self, on_apply, on_cancel, initial_dir=""):
-        self.on_apply_callback = on_apply
+    def __init__(self, on_action, initial_dir=""):
+        self.on_action_callback = on_action
         
         self.playlist_dir = urwid.Edit("Dir: ", initial_dir)
         
         apply_btn = MinimalButton("Apply", on_press=self.try_submit)
-        cancel_btn = MinimalButton("Cancel", on_press=lambda _: on_cancel())
+        cancel_btn = MinimalButton("Cancel", on_press=lambda _: self.on_action_callback(SetVisible(element=UIElement.PLAYLIST_PICKER_DIALOG, visible=False)))
         
         dialog_pile = urwid.Pile([
             urwid.Text("Playlist Directory Picker (accepts mp3, wav, flac and ogg)", align='center'),
@@ -123,7 +125,7 @@ class PlaylistPickerDialog(urwid.WidgetWrap):
 
     def try_submit(self, button=None):
         try:
-            self.on_apply_callback(self.playlist_dir.get_edit_text())
+            self.on_action_callback(SetPlaylistDir(self.playlist_dir.get_edit_text()))
         except ValueError:
             pass # ignore
 

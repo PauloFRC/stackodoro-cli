@@ -28,7 +28,8 @@ class Pomodoro:
         self._paused = False
         self._transition_pending = False
         self._last_decrement: float | None = None
-        self._message: str = get_pomodoro_session_message(self._session_type)
+        self._message = ""
+        self._update_message()
     
     def get_status(self):
         self._update_clock()
@@ -73,7 +74,7 @@ class Pomodoro:
             self._session_type = SessionType.WORK
             self._time_remaining = self.work_period * 60
         
-        self._message = get_pomodoro_session_message(self._session_type)
+        self._update_message()
         
         self._transition_pending = True
 

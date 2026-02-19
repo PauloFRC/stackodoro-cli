@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from dataclasses import dataclass, field
 
 from .pomodoro import PomodoroStatus
@@ -23,6 +23,81 @@ class AsciiState:
     pomodoro_status: PomodoroStatus | None = None
     steam_state: int = 0
     music_playing: str | None = None
+
+@dataclass
+class MenuState:
+    show_menus: bool = True
+    show_volume: bool = False
+    volume: float = 1.0
+    show_custom_timer_dialog: bool = False
+    show_playlist_picker_dialog: bool = False
+    current_playlist_dir: str = ""
+
+@dataclass
+class UIState:
+    ascii: AsciiState = field(default_factory=AsciiState)
+    menu: MenuState = field(default_factory=MenuState)
+
+# actions
+class UIElement(Enum):
+    MENUS = auto()
+    VOLUME = auto()
+    CUSTOM_TIMER_DIALOG = auto()
+    PLAYLIST_PICKER_DIALOG = auto()
+
+@dataclass(frozen=True)
+class SetVisible:
+    element: UIElement
+    visible: bool
+
+@dataclass(frozen=True)
+class Tick: pass
+
+@dataclass(frozen=True)
+class AdjustVolume:
+    delta: float
+
+@dataclass(frozen=True)
+class PlaySessionCompletedSound: pass
+
+@dataclass(frozen=True)
+class PlayShelfCompletedSound: pass
+
+@dataclass(frozen=True)
+class PlayPlaylist: pass
+
+@dataclass(frozen=True)
+class StopPlaylist: pass
+
+@dataclass(frozen=True)
+class PausePlaylist: pass
+
+@dataclass(frozen=True)
+class ToggleMusic: pass
+
+@dataclass(frozen=True)
+class PreviousTrack: pass
+
+@dataclass(frozen=True)
+class NextTrack: pass
+
+@dataclass(frozen=True)
+class TogglePause: pass
+
+@dataclass(frozen=True)
+class StartTimer:
+    work_minutes: int
+    break_minutes: int
+    big_break_minutes: int
+
+@dataclass(frozen=True)
+class SetPlaylistDir:
+    directory: str
+
+@dataclass(frozen=True)
+class Quit: pass
+
+Action = Tick | SetVisible | AdjustVolume | ToggleMusic | PreviousTrack | NextTrack | TogglePause | StartTimer | PlayPlaylist | StopPlaylist | PausePlaylist | SetPlaylistDir | Quit | PlaySessionCompletedSound | PlayShelfCompletedSound
 
 @dataclass
 class AppSnapshot:
