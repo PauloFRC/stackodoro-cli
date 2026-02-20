@@ -5,7 +5,7 @@ A cozy Pomodoro terminal cli app. For every work session you complete, a random 
 ![Showcase](showcase.png)
 
 ## Features
-- Built entirely for the terminal using urwid
+- Built entirely for the terminal using urwid.
 - **Integrated music player**: Pick the local directory of your playlist, play/pause music, skip tracks, and adjust the volume directly within the TUI.
 - **Customizable Timers:**: Set your own durations for work, break, and long break sessions.
 - **Audio Cues**: Automatically pauses your music and plays a transition sound when a session finishes. Music resumes when you start your next work session.
