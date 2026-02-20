@@ -15,15 +15,7 @@ A cozy Pomodoro terminal cli app. For every work session you complete, a random 
 
 This project requires **pipx** to install. If you don't have it yet:
 ```bash
-# macOS
-brew install pipx
-pipx ensurepath
-
-# Windows
-scoop install pipx
-pipx ensurepath
-
-# Linux / other
+# Linux 
 python3 -m pip install --user pipx
 python3 -m pipx ensurepath
 ```
