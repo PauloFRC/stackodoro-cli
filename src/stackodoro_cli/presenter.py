@@ -146,6 +146,9 @@ def display_pause() -> list:
         "============",
         "   PAUSED   ",
         "============",
+        "",
+        "Press Esc to return",
+        "Press Space to skip session"
     ]
     return [('bold_text', "\n".join(pause_msg))]
 

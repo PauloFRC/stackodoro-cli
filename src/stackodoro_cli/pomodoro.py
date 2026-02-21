@@ -78,7 +78,9 @@ class Pomodoro:
         
         self._transition_pending = True
 
-    def confirm_transition(self):
+    def confirm_transition(self, skip=False):
+        if skip:
+            self._prepare_transition()
         self._transition_pending = False
         self._last_decrement = time.time()
     

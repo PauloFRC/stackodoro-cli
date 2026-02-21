@@ -2,7 +2,7 @@ import urwid
 
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
-from .models import UIState, AppSnapshot, Action, UIElement, Tick, DisplayError, SetVisible, AdjustVolume, PlaySessionCompletedSound, PlayShelfCompletedSound, PlayPlaylist, StopPlaylist, PausePlaylist, ToggleMusic, PreviousTrack, NextTrack, TogglePause, StartTimer, SetPlaylistDir, Quit
+from .models import UIState, AppSnapshot, Action, UIElement, Tick, DisplayError, SetVisible, AdjustVolume, PlaySessionCompletedSound, PlayShelfCompletedSound, PlayPlaylist, StopPlaylist, PausePlaylist, ToggleMusic, PreviousTrack, NextTrack, TogglePause, SkipSession, StartTimer, SetPlaylistDir, Quit
 from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
 from .audio import AudioMixer, Paused, Playing
@@ -11,7 +11,7 @@ from .screen import MainScreen
 
 class App:
     def __init__(self):
-        self.ui_state = UIState()
+        self.state = UIState()
         self.volume = 1.0
 
         # services
@@ -34,7 +34,7 @@ class App:
             custom_timer_dialog=CustomTimerDialog(on_action=self.handle),
             playlist_picker_dialog=PlaylistPickerDialog(
                 on_action=self.handle,
-                initial_dir=self.ui_state.menu.current_playlist_dir
+                initial_dir=self.state.menu.current_playlist_dir
             )
         )
         self.loop = urwid.MainLoop(
@@ -57,14 +57,14 @@ class App:
         snapshot = storage_service.load_state()
         
         self.bookshelf.load_books(snapshot.books, snapshot.n_shelfs_completed)
-        self.ui_state.ascii.n_shelfs_completed = snapshot.n_shelfs_completed
+        self.state.ascii.n_shelfs_completed = snapshot.n_shelfs_completed
         if snapshot.playlist_dir:
             self.mixer.load_playlist(snapshot.playlist_dir) #TODO Change
-            self.ui_state.menu.current_playlist_dir = snapshot.playlist_dir
+            self.state.menu.current_playlist_dir = snapshot.playlist_dir
         
     def save_data(self):
         snapshot = AppSnapshot(
-            playlist_dir=self.ui_state.menu.current_playlist_dir,
+            playlist_dir=self.state.menu.current_playlist_dir,
             n_shelfs_completed=self.bookshelf.n_shelfs_completed,
             books=self.bookshelf.get_books()
         )        
@@ -75,13 +75,13 @@ class App:
             case Tick():
                 self.tick()
             case DisplayError(error_msg=error_msg):
-                self.ui_state.menu.error_msg = error_msg
+                self.state.menu.error_msg = error_msg
                 self.set_visibility(UIElement.ERROR_MSG, True)
             case SetVisible(element=element, visible=visible):
                 self.set_visibility(element, visible)
             case AdjustVolume(delta=delta):
-                volume = max(0.0, min(1.0, self.ui_state.menu.volume + delta))
-                self.ui_state.menu.volume = volume
+                volume = max(0.0, min(1.0, self.state.menu.volume + delta))
+                self.state.menu.volume = volume
                 self.mixer.set_volume(volume) # TODO see if this can be optimized
                 self.set_visibility(UIElement.VOLUME, True)
             case PlaySessionCompletedSound():
@@ -101,6 +101,8 @@ class App:
                 self.mixer.skip_track()
             case ToggleMusic():
                 self.toggle_music()
+            case SkipSession():
+                self.skip_session()
             case TogglePause():
                 self.toggle_pause()
             case StartTimer(work_minutes=work, break_minutes=break_time, big_break_minutes=big_break):
@@ -113,55 +115,55 @@ class App:
             
     def tick(self):
         # mixer updates
-        self.ui_state.ascii.music_playing = self.mixer.state.track if self.mixer and isinstance(self.mixer.state, Playing) else None
+        self.state.ascii.music_playing = self.mixer.state.track if self.mixer and isinstance(self.mixer.state, Playing) else None
 
         # bookshelf updates
-        self.ui_state.ascii.bookshelf_render = self.bookshelf.render()
+        self.state.ascii.bookshelf_render = self.bookshelf.render()
 
-        prev_n_shelfs_completed = self.ui_state.ascii.n_shelfs_completed
-        self.ui_state.ascii.n_shelfs_completed = self.bookshelf.get_n_shelfs_completed()
-        if self.ui_state.ascii.n_shelfs_completed > prev_n_shelfs_completed:
+        prev_n_shelfs_completed = self.state.ascii.n_shelfs_completed
+        self.state.ascii.n_shelfs_completed = self.bookshelf.get_n_shelfs_completed()
+        if self.state.ascii.n_shelfs_completed > prev_n_shelfs_completed:
             self.play_shelf_completed = True
 
         # pomodoro updates
         if self.pomodoro:
-            self.ui_state.ascii.pomodoro_status = self.pomodoro.get_status()
+            self.state.ascii.pomodoro_status = self.pomodoro.get_status()
             self.handle_transition_sound()
         
         # animation updates
         self.tick_animations()
 
         # update screen
-        self.main_screen.update(self.ui_state)
+        self.main_screen.update(self.state)
 
     
     def tick_animations(self):
-        pomodoro_state = self.ui_state.ascii.pomodoro_status
+        pomodoro_state = self.state.ascii.pomodoro_status
 
         # update steam
         if not pomodoro_state or (not pomodoro_state.is_paused and not pomodoro_state.is_transition_pending):
             self.steam_tick_counter += 1
             if self.steam_tick_counter >= self.steam_update_threshold:
-                self.ui_state.ascii.steam_state = (self.ui_state.ascii.steam_state + 1) % 4
+                self.state.ascii.steam_state = (self.state.ascii.steam_state + 1) % 4
                 self.steam_tick_counter = 0
 
     def set_visibility(self, element: UIElement, visible: bool):
         match element:
             case UIElement.MENUS:
-                self.ui_state.menu.show_menus = visible
+                self.state.menu.show_menus = visible
                 if visible and self.pomodoro:
                     self.schedule_autohide(element, 5)
             case UIElement.VOLUME:
-                self.ui_state.menu.show_volume = visible
+                self.state.menu.show_volume = visible
                 if visible:
                     self.schedule_autohide(element, 3)
             case UIElement.CUSTOM_TIMER_DIALOG:
-                self.ui_state.menu.show_custom_timer_dialog = visible
+                self.state.menu.show_custom_timer_dialog = visible
             case UIElement.PLAYLIST_PICKER_DIALOG:
-                self.ui_state.menu.show_playlist_picker_dialog = visible
+                self.state.menu.show_playlist_picker_dialog = visible
             case UIElement.ERROR_MSG:
                 if not visible:
-                    self.ui_state.menu.error_msg = None
+                    self.state.menu.error_msg = None
                 else:
                     self.schedule_autohide(UIElement.ERROR_MSG, 8)
 
@@ -209,6 +211,12 @@ class App:
         self.mixer.quit()
         raise urwid.ExitMainLoop()
     
+    def skip_session(self):
+        if not self.pomodoro:
+            return
+
+        self.handle_transition(skip=True)
+
     def toggle_pause(self):
         if not self.pomodoro:
             return
@@ -222,7 +230,10 @@ class App:
         else:
             self.pomodoro.pause()
 
-    def handle_transition(self):
+    def handle_transition(self, skip=False):
+        if not self.pomodoro:
+            return
+
         pomodoro_status = self.pomodoro.get_status()
         mixer_state = self.mixer.state
 
@@ -230,12 +241,12 @@ class App:
         if isinstance(mixer_state, Paused) and pomodoro_status.session_type == SessionType.WORK:
             self.handle(PlayPlaylist())
         
-        # if we are no longer in WORK (meaning work finished), add a book
-        if pomodoro_status.session_type != SessionType.WORK:
+        # if we are no longer in WORK (meaning work finished), add a book if we didnt skip
+        if pomodoro_status.session_type != SessionType.WORK and not skip:
             self.bookshelf.add_book()
             self.save_data()
             
-        self.pomodoro.confirm_transition()
+        self.pomodoro.confirm_transition(skip=skip)
     
     def hide_all_dialogs(self):
         self.set_visibility(UIElement.CUSTOM_TIMER_DIALOG, False)
@@ -256,19 +267,26 @@ class App:
             self.handle(DisplayError(e))
     
     def handle_input(self, key):
-        if self.ui_state.menu.show_custom_timer_dialog:
+        if self.state.menu.show_custom_timer_dialog:
             if key == 'esc':
                 self.handle(SetVisible(element=UIElement.CUSTOM_TIMER_DIALOG, visible=False))
             elif key == 'enter':
                 self.main_screen.custom_timer_dialog.try_submit()
             return
         
-        if self.ui_state.menu.show_playlist_picker_dialog:
+        if self.state.menu.show_playlist_picker_dialog:
             if key == 'esc':
                 self.handle(SetVisible(element=UIElement.PLAYLIST_PICKER_DIALOG, visible=False))
             elif key == 'enter':
                 self.main_screen.playlist_picker_dialog.try_submit()
             return
+
+        pomodoro_status = self.state.ascii.pomodoro_status
+        if pomodoro_status and pomodoro_status.is_paused:
+            if key == 'esc':
+                self.handle(TogglePause())
+            elif key == ' ':
+                self.handle(SkipSession())
         
         if key in ('+', '='):
             self.handle(AdjustVolume(delta=0.1))
@@ -284,12 +302,12 @@ class App:
             if self.pomodoro:
                 self.handle(TogglePause())
         else:
-            if not self.ui_state.menu.show_menus:
+            if not self.state.menu.show_menus:
                 self.handle(SetVisible(element=UIElement.MENUS, visible=True))
             return key
 
     def handle_transition_sound(self):
-        is_transitioning = self.ui_state.ascii.pomodoro_status.is_transition_pending
+        is_transitioning = self.state.ascii.pomodoro_status.is_transition_pending
                 
         if is_transitioning and not self._transition_sound_played:
             ''' 

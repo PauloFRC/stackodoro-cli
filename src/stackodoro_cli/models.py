@@ -87,6 +87,9 @@ class NextTrack: pass
 class TogglePause: pass
 
 @dataclass(frozen=True)
+class SkipSession: pass
+
+@dataclass(frozen=True)
 class StartTimer:
     work_minutes: int
     break_minutes: int
@@ -103,7 +106,7 @@ class DisplayError:
 @dataclass(frozen=True)
 class Quit: pass
 
-Action = Tick | DisplayError | SetVisible | AdjustVolume | ToggleMusic | PreviousTrack | NextTrack | TogglePause | StartTimer | PlayPlaylist | StopPlaylist | PausePlaylist | SetPlaylistDir | Quit | PlaySessionCompletedSound | PlayShelfCompletedSound
+Action = Tick | DisplayError | SetVisible | AdjustVolume | ToggleMusic | PreviousTrack | NextTrack | TogglePause | SkipSession | StartTimer | PlayPlaylist | StopPlaylist | PausePlaylist | SetPlaylistDir | Quit | PlaySessionCompletedSound | PlayShelfCompletedSound
 
 @dataclass
 class AppSnapshot:
