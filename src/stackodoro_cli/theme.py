@@ -23,6 +23,13 @@ palette = [
     ('book_color_1', 'dark blue', ''),
     ('book_color_2', 'dark green', ''),
     ('book_color_3', 'dark red', ''),
+    ('book_color_4', 'dark magenta', ''),
+    ('book_color_5', 'dark cyan', ''),
+    ('book_color_6', 'brown', ''),
+    ('book_color_7', 'light blue', ''),
+    ('book_color_8', 'light green', ''),
+    ('book_color_9', 'light red', ''),
+    ('book_color_10', 'light magenta', ''),
 ]
 
 class SelectableText(urwid.Text):
