@@ -66,6 +66,9 @@ class PlaySessionCompletedSound: pass
 class PlayShelfCompletedSound: pass
 
 @dataclass(frozen=True)
+class PlaySessionStartSound: pass
+
+@dataclass(frozen=True)
 class PlayPlaylist: pass
 
 @dataclass(frozen=True)
@@ -106,7 +109,26 @@ class DisplayError:
 @dataclass(frozen=True)
 class Quit: pass
 
-Action = Tick | DisplayError | SetVisible | AdjustVolume | ToggleMusic | PreviousTrack | NextTrack | TogglePause | SkipSession | StartTimer | PlayPlaylist | StopPlaylist | PausePlaylist | SetPlaylistDir | Quit | PlaySessionCompletedSound | PlayShelfCompletedSound
+Action = (
+    Tick 
+    | DisplayError 
+    | SetVisible 
+    | AdjustVolume 
+    | ToggleMusic 
+    | PreviousTrack 
+    | NextTrack 
+    | TogglePause 
+    | SkipSession 
+    | StartTimer 
+    | PlayPlaylist 
+    | StopPlaylist 
+    | PausePlaylist 
+    | SetPlaylistDir 
+    | Quit 
+    | PlaySessionCompletedSound 
+    | PlayShelfCompletedSound
+    | PlaySessionStartSound
+)
 
 @dataclass
 class AppSnapshot:

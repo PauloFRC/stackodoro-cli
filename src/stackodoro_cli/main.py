@@ -2,7 +2,10 @@ import urwid
 
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
-from .models import UIState, AppSnapshot, Action, UIElement, Tick, DisplayError, SetVisible, AdjustVolume, PlaySessionCompletedSound, PlayShelfCompletedSound, PlayPlaylist, StopPlaylist, PausePlaylist, ToggleMusic, PreviousTrack, NextTrack, TogglePause, SkipSession, StartTimer, SetPlaylistDir, Quit
+from .models import (UIState, AppSnapshot, Action, UIElement, Tick, DisplayError, SetVisible, 
+                     AdjustVolume, PlaySessionCompletedSound, PlayShelfCompletedSound, PlaySessionStartSound, 
+                     PlayPlaylist, StopPlaylist, PausePlaylist, ToggleMusic, PreviousTrack, NextTrack, TogglePause, 
+                     SkipSession, StartTimer, SetPlaylistDir, Quit)
 from .pomodoro import Pomodoro, SessionType
 from .bookshelf import Bookshelf
 from .audio import AudioMixer, Paused, Playing
@@ -89,6 +92,8 @@ class App:
             case PlayShelfCompletedSound():
                 self.mixer.play_shelf_complete()
                 self.play_shelf_completed = False
+            case PlaySessionStartSound():
+                self.mixer.play_session_start()
             case PlayPlaylist():
                 self.play_playlist()
             case StopPlaylist():
@@ -96,7 +101,7 @@ class App:
             case PausePlaylist():
                 self.mixer.pause()
             case PreviousTrack():
-                self.mixer.previous_track
+                self.mixer.previous_track()
             case NextTrack():
                 self.mixer.skip_track()
             case ToggleMusic():
@@ -108,6 +113,7 @@ class App:
             case StartTimer(work_minutes=work, break_minutes=break_time, big_break_minutes=big_break):
                 self.hide_all_dialogs()
                 self.start_preset(work, break_time, big_break)
+                self.mixer.play_session_start()
             case SetPlaylistDir(directory=dir):
                 self.set_playlist_directory(dir)
             case Quit():
@@ -236,6 +242,9 @@ class App:
 
         pomodoro_status = self.pomodoro.get_status()
         mixer_state = self.mixer.state
+
+        # play session start soumd
+        self.handle(PlaySessionStartSound())
 
         # resume music if it was paused and we are in work session
         if isinstance(mixer_state, Paused) and pomodoro_status.session_type == SessionType.WORK:

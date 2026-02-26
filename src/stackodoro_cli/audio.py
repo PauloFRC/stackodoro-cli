@@ -27,6 +27,7 @@ AudioState = Stopped | Paused | Playing | Quitting
 
 class AudioMixer:
     SOUND_FILES = {
+        'session_start': 'session_start.wav',
         'session_complete': 'session_complete.mp3',
         'shelf_complete': 'shelf_complete.mp3'
     }
@@ -53,6 +54,10 @@ class AudioMixer:
 
         self._play_lock = threading.Lock()
         self._current_thread: threading.Thread | None = None
+
+    def play_session_start(self):
+        data, samplerate = self.sound_effects['session_start']
+        self._play_audio(data * self.volume, samplerate)
 
     def play_session_complete(self):
         data, samplerate = self.sound_effects['session_complete']
