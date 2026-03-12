@@ -8,7 +8,7 @@ class LeftMenu(urwid.WidgetWrap):
     def __init__(self, on_action):
         btn_25_5 = MinimalButton("25+5+20", on_press=lambda _: on_action(StartTimer(work_minutes=25, break_minutes=5, big_break_minutes=20)))
         btn_35_10 = MinimalButton("35+10+20", on_press=lambda _: on_action(StartTimer(work_minutes=35, break_minutes=10, big_break_minutes=20)))
-        btn_40_20 = MinimalButton("40+20+30", on_press=lambda _: on_action(StartTimer(work_minutes=40, break_minutes=20, big_break_minutes=30)))
+        btn_40_20 = MinimalButton("45+15+30", on_press=lambda _: on_action(StartTimer(work_minutes=45, break_minutes=15, big_break_minutes=30)))
         btn_custom = MinimalButton("Custom Timer", on_press=lambda _: on_action(SetVisible(element=UIElement.CUSTOM_TIMER_DIALOG, visible=True)))
         btn_quit = MinimalButton("Quit", on_press=lambda _: on_action(Quit()))
         
