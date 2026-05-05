@@ -1,5 +1,7 @@
 import urwid
 
+BOOK_COLOR_NAMES = [f'book_color_{i}' for i in range(1, 11)]
+
 palette = [
      # unfocused button
     ('minimal_button', 'light gray', ''),
@@ -19,7 +21,9 @@ palette = [
     ('music_color', 'light cyan', ''),
     ('session_color', 'light magenta,bold', ''),
     ('error_color', 'light red,bold', ''),
-    # book colors
+]
+
+palette += [
     ('book_color_1', 'dark blue', ''),
     ('book_color_2', 'dark green', ''),
     ('book_color_3', 'dark red', ''),

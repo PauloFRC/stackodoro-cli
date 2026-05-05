@@ -63,7 +63,7 @@ class Bookshelf:
         return shelves
     
     def add_book(self):
-        new_book = choice(book_options)
+        new_book = Book(ascii=choice(book_options))
         
         test_books = self._completed_books + [new_book]
         packed_shelves = self._pack_books(test_books)
