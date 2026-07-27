@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "stackodoro-cli"
+name = "stackodoro"
 version = "0.1.0"
 description = "Simple pomodoro cli app that fill as bookshelf with a random book every session"
 readme = "README.md"
