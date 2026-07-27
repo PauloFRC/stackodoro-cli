@@ -18,6 +18,9 @@ def display_view(state: AsciiState) -> list:
         colors=[row[:] for row in state.bookshelf_render.colors]
     )
 
+    base_canvas.lines.insert(0, " " * len(base_canvas.lines[0]) if base_canvas.lines else "")
+    base_canvas.colors.insert(0, [None] * len(base_canvas.lines[0]) if base_canvas.lines else [])
+
     # build/load assets
     steam_variations = [
         ["    ( (   ",
@@ -61,6 +64,17 @@ def display_view(state: AsciiState) -> list:
         colors=[['timer_color'] * len(time_text)]
     )
     merge_assets(base_canvas, timer_asset, timer_y, 42)
+
+    h = int(state.uptime_seconds // 3600)
+    m = int((state.uptime_seconds % 3600) // 60)
+    s = int(state.uptime_seconds % 60)
+    uptime_text = f"[ {h:02d}:{m:02d}:{s:02d} ]"
+    uptime_asset = AsciiArtAsset(
+        lines=[uptime_text],
+        colors=[['uptime_color'] * len(uptime_text)]
+    )
+    uptime_x = max(0, len(base_canvas.lines[0]) - len(uptime_text) - 2) if base_canvas.lines else 0
+    merge_assets(base_canvas, uptime_asset, 0, uptime_x)
 
     # pad all lines to the same width
     max_width = max(len(line) for line in base_canvas.lines) if base_canvas.lines else 0

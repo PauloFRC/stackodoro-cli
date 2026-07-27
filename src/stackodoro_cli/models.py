@@ -23,6 +23,7 @@ class AsciiState:
     pomodoro_status: PomodoroStatus | None = None
     steam_state: int = 0
     music_playing: str | None = None
+    uptime_seconds: int = 0
 
 @dataclass
 class MenuState:

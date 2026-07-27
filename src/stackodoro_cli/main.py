@@ -1,4 +1,5 @@
 import urwid
+import time
 
 from .menus import LeftMenu, RightMenu, CustomTimerDialog, PlaylistPickerDialog, VolumeDisplay
 from .theme import palette
@@ -24,6 +25,8 @@ class App:
 
         # load persistent data
         self.load_data()
+        
+        self.start_time = time.time()
         
         # screen
         self.left_menu = LeftMenu(on_action=self.handle)
@@ -136,6 +139,9 @@ class App:
             self.state.ascii.pomodoro_status = self.pomodoro.get_status()
             self.handle_transition_sound()
         
+        # uptime updates
+        self.state.ascii.uptime_seconds = int(time.time() - self.start_time)
+
         # animation updates
         self.tick_animations()
 

@@ -13,6 +13,7 @@ palette = [
     ('mug_color', 'white,bold', ''),
     ('clock_color', 'white', ''),
     ('timer_color', 'white,bold', ''),
+    ('uptime_color', 'dark gray', ''),
     ('notebook_color', 'light green', ''),
     ('sign_color', 'brown', ''),
     ('sign_text_color', 'white,bold', ''),
