@@ -8,13 +8,33 @@ version = "0.1.0"
 description = "Simple pomodoro cli app that fill as bookshelf with a random book every session"
 readme = "README.md"
 requires-python = ">=3.8"
+authors = [
+    {name = "PauloFRC"}
+]
+license = {text = "Apache-2.0"}
+keywords = ["pomodoro", "cli", "tui", "productivity"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+    "License :: OSI Approved :: Apache Software License"
+]
+
 dependencies = [
     "urwid",
     "sounddevice>=0.4.6",
     "soundfile>=0.12.1",
     "numpy>=1.24.0",
-    "soxr"
+    "soxr",
+    "platformdirs>=3.0.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/PauloFRC/stackodoro-cli"
+Repository = "https://github.com/PauloFRC/stackodoro-cli"
+Issues = "https://github.com/PauloFRC/stackodoro-cli/issues"
+
 
 [project.scripts]
 stackodoro = "stackodoro_cli.main:run"

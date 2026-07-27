@@ -9,7 +9,13 @@ A cozy Pomodoro terminal cli app. For every work session you complete, a random 
 - **Integrated music player**: Pick the local directory of your playlist, play/pause music, skip tracks, and adjust the volume directly within the TUI.
 - **Customizable Timers:**: Set your own durations for work, break, and long break sessions.
 - **Audio Cues**: Automatically pauses your music and plays a transition sound when a session finishes. Music resumes when you start your next work session.
-- **Persistent State**: Your bookshelf progress, completed shelves, and last used playlist directory are automatically saved to `~/.local/share/stackodoro-cli/stackaro.json` (or `$XDG_DATA_HOME/stackodoro-cli/stackaro.json` if set).
+- **Persistent State**: Your bookshelf progress, completed shelves, and last used playlist directory are automatically saved using OS-specific standard data directories (handled by `platformdirs`).
+
+## Windows Compatibility
+
+While `stackodoro-cli` works well on Linux and macOS, the underlying TUI library (`urwid`) has experimental and often glitchy support for native Windows command prompts (CMD/PowerShell). 
+
+**For Windows users, we highly recommend installing Windows Subsystem for Linux (WSL) and running the app from there for the best experience.**
 
 ## Dependencies
 

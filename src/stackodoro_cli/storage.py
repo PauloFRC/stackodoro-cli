@@ -1,6 +1,6 @@
 import json
 from itertools import dropwhile
-import os
+import platformdirs
 from pathlib import Path
 
 from .models import AppSnapshot
@@ -14,9 +14,8 @@ class StorageService:
 
         self.snapshot = self.load_state()
 
-    def _load_default_storage(self) -> str:
-        data_home = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
-        self.storage_dir = Path(data_home) / 'stackodoro-cli'
+    def _load_default_storage(self):
+        self.storage_dir = Path(platformdirs.user_data_dir("stackodoro-cli"))
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.storage_file = self.storage_dir / 'stackaro.json'
 
